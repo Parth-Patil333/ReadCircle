@@ -43,12 +43,35 @@
     padding-top: 25px;
     margin-top:15px ;
 }
+.hd2{
+    margin-top: 10px;
+}
+.hd3{
+    margin-top: 10px;
+}
+.span-h1{
+    border: 1px solid #6610f2;
+    background-color: #6610f2;
+    color: white;
+    padding: 3px;
+    border-radius: 10px;
+}
+.span-h2{
+    border: 1px solid #a684f7;
+    background-color: #a684f7;
+    color: white;
+    padding: 3px;
+    border-radius: 10px;
+}
 .sub_heading{
     padding-top: 15px;
+    display: flex;
+    flex-direction: column;
 }
 .sub_h1 , .sub_h2 , .sub_h3{
     padding-top: 20px;
 }
 .content_1 , .content_2 , .content_3{
     padding-top: 10px;
+    display: flex;
 }

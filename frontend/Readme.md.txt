@@ -1,5 +1,6 @@
 readcircle-frontend/
-├── index.html                      # Login page
+├── index.html                      # Frontpage
+├── login.html                      # Login page
 ├── dashboard.html                  # Main options page (Option 1, 2, 3)
 
 ├── bookshelf/                      # Option 1: Personal Reading

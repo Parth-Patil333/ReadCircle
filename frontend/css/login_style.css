@@ -18,3 +18,8 @@
     height: 15px;
     padding: 20px;
 }
+.sign-in{
+    margin-top: 5px;
+    border: 2px solid black;
+    padding: 5px;
+}
