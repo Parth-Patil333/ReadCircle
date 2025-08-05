@@ -1,25 +1,99 @@
-*{
+* {
     box-sizing: border-box;
     padding: 0;
     margin: 0;
     list-style-type: none;
     text-decoration: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.login{
+body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #6610F2, #A684F7);
     display: flex;
-    flex-direction: column;
-    height: 500px;
     justify-content: center;
     align-items: center;
-    gap: 10px;
+    padding: 2rem;
 }
-.email-pass{
-    height: 15px;
-    padding: 20px;
+
+/* Glass container */
+.glass-container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+    padding: 3rem 2rem;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 100%;
+    max-width: 400px;
+    animation: fadeIn 0.6s ease-in-out;
 }
-.sign-in{
-    margin-top: 5px;
-    border: 2px solid black;
-    padding: 5px;
+
+.login {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+}
+
+.email-pass {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid #CED4DA;
+    border-radius: 0.8rem;
+    background-color: rgba(255, 255, 255, 0.3);
+    color: #343A40;
+    font-size: 1rem;
+    outline: none;
+    transition: background-color 0.3s, border 0.3s;
+}
+
+.email-pass::placeholder {
+    color: #6C757D;
+}
+
+.email-pass:focus {
+    border-color: #6610F2;
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Sign-in button */
+.sign-in {
+    margin-top: 0.5rem;
+    width: 100%;
+    text-align: center;
+    background-color: #6C757D;
+    color: white;
+    padding: 0.8rem;
+    border-radius: 0.8rem;
+    transition: background-color 0.3s, color 0.3s;
+    cursor: pointer;
+}
+
+.sign-in a {
+    color: white;
+    font-weight: 500;
+    display: inline-block;
+    width: 100%;
+}
+
+.sign-in:hover {
+    background-color: white;
+    color: #343A40;
+    border: 1px solid #343A40;
+}
+
+.sign-in:hover a {
+    color: #343A40;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
