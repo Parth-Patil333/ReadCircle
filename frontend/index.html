@@ -1,60 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Front Page</title>
-    <link rel="stylesheet" href="css/index_style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReadCircle | Landing</title>
+    <link rel="stylesheet" href="css/index_style.css" />
 </head>
+
 <body>
     <div class="container">
-<!------- HEAD ------->
-        <header>
-            <div class="header">
-                <p>ReadCircle</p>
-                <nav>
-                    <ul class="nav">
-                        <li><a class="btn_login" href="login.html">Login</a></li>
-                        <li><a class="btn_signup" href="none">Register</a></li>
-                    </ul>
-                </nav>
-            </div>
+        <!-- HEADER -->
+        <header class="header">
+            <p class="logo">ReadCircle</p>
+            <nav>
+                <ul class="nav">
+                    <li><a class="btn btn_login" href="login.html">Login</a></li>
+                    <li><a class="btn btn_signup" href="#">Register</a></li>
+                </ul>
+            </nav>
         </header>
-<!------- MAIN ------->
+
+        <!-- MAIN -->
         <main class="main">
-            <h1 class="hd1"><span class="span-h1">Track</span> Your Reading .</h1>
-            <h1 class="hd2"><span class="span-h2">Share</span> Your Shelf .</h1>
-            <h1 class="hd3"><span class="span-h1">Connect</span> Through Books.</h1>
-            <div class="sub_heading">
-                <h2 class="sub_h1">
-                   Reading Log
-                   </h3>
-                       <ul class="content_1">
-                           <li>Keep your reading journey  organized and insightful.<br> Add books,write notes and track progress</li>
-                           <li><img src="images/svg1.svg" alt="img1" width="100px"></li>
-                       </ul>
-                   <h3>  
-                </h2>
-                <h2 class="sub_h2">
-                   Book Lending
-                   </h3>
-                       <ul class="content_2">
-                           <li>Lend or Borrow book in your private circle.<br>Know who has your book , since when , and when its due.</li>
-                           <li><img src="images/svg2.svg" alt="img2" width="100px"></li>
-                       </ul>
-                   <h3>  
-                </h2>
-                <h2 class="sub_h3">
-                   Peer To Peer Book selling
-                   </h3>
-                       <ul class="content_3">
-                           <li>List your books for sale within your circle. <br>Find affordable second-hand books quickly.</li>
-                           <li><img src="images/svg3.svg" alt="img3" width="100px"></li>
-                       </ul>
-                   <h3>  
-                </h2>
+            <div class="intro">
+                <h1><span class="span-h1">Track</span> Your Reading.</h1>
+                <h1><span class="span-h2">Share</span> Your Shelf.</h1>
+                <h1><span class="span-h1">Connect</span> Through Books.</h1>
             </div>
+
+            <div class="sub_heading">
+                <!-- Section 1 -->
+                <section class="sub_section">
+                    <div class="section_grid">
+                        <div class="section_text">
+                            <h2 class="sub_h">Reading Log</h2>
+                            <p>Keep your reading journey organized and insightful.<br>
+                                Add books, write notes, and track progress.</p>
+                        </div>
+                        <div class="section_img">
+                            <img src="images/svg1.svg" alt="Reading Log" />
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2 -->
+                <section class="sub_section">
+                    <div class="section_grid">
+                        <div class="section_text">
+                            <h2 class="sub_h">Book Lending</h2>
+                            <p>Lend or borrow books in your private circle.<br>
+                                Know who has your book, since when, and when it's due.</p>
+                        </div>
+                        <div class="section_img">
+                            <img src="images/svg2.svg" alt="Book Lending" />
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 3 -->
+                <section class="sub_section">
+                    <div class="section_grid">
+                        <div class="section_text">
+                            <h2 class="sub_h">Peer to Peer Book Selling</h2>
+                            <p>List your books for sale within your circle.<br>
+                                Find affordable second-hand books quickly.</p>
+                        </div>
+                        <div class="section_img">
+                            <img src="images/svg3.svg" alt="Book Selling" />
+                        </div>
+                    </div>
+                </section>
+            </div>
+
         </main>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <p>© 2025 ReadCircle. All rights reserved.</p>
+            <p class="footer-links">
+                <a href="#">Privacy Policy</a> |
+                <a href="#">Terms of Use</a> |
+                <a href="#">Contact</a>
+            </p>
+        </footer>
     </div>
 </body>
+
 </html>
