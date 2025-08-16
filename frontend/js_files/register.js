@@ -1,12 +1,11 @@
-
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const username = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
     try {
-        const res = await fetch('http://localhost:5000/api/auth/login', {
+        const res = await fetch('http://localhost:5000/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -15,9 +14,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await res.json();
         if (res.ok) {
             alert(data.message);
-            window.location.href = 'dashboard.html'; // Redirect after login
+            window.location.href = 'login.html'; // Redirect after registration
         } else {
-            alert(data.message || 'Login failed');
+            alert(data.message || 'Registration failed');
         }
     } catch (error) {
         console.error('Error:', error);
