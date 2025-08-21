@@ -4,7 +4,7 @@ document.getElementById('addBookForm').addEventListener('submit', async (e) => {
     const author = document.getElementById('author').value;
     const status = document.getElementById('status').value;
 
-    const res = await fetch('http://localhost:5000/api/books', {
+    const res = await fetch('https://readcircle.onrender.com/api/books', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, author, status })
@@ -14,7 +14,7 @@ document.getElementById('addBookForm').addEventListener('submit', async (e) => {
 });
 
 async function loadBooks() {
-    const res = await fetch('http://localhost:5000/api/books');
+    const res = await fetch('https://readcircle.onrender.com/api/books');
     const books = await res.json();
     const list = document.getElementById('bookList');
     list.innerHTML = '';

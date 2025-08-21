@@ -5,7 +5,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     const password = document.getElementById('password').value;
 
     try {
-        const res = await fetch('http://localhost:5000/api/auth/register', {
+        const res = await fetch('https://readcircle.onrender.com/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
