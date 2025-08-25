@@ -15,7 +15,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await res.json();
         if (res.ok) {
             alert(data.message);
-            window.location.href = 'dashboard.html'; // Redirect after login
+            window.location.href = 'test-books.html'; // Redirect after login
         } else {
             alert(data.message || 'Login failed');
         }
