@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Lending Tracker Test</title>
+  <title>Lending Tracker</title>
   <link rel="stylesheet" href="css/lending.css">
 </head>
 <body>
   <div class="container">
-    <h2 class="section-title">Lend Book</h2>
+
+    <h2 class="section-title">📚 Lend Book</h2>
     <form id="lendingForm" class="form-card">
       <input type="text" id="bookTitle" class="input-field" placeholder="Book Title" required>
       <input type="text" id="borrowerName" class="input-field" placeholder="Borrower Name" required>
@@ -16,11 +17,23 @@
       <button type="submit" class="btn">Lend Book</button>
     </form>
 
-    <h2 class="section-title">Lending Records</h2>
+    <h2 class="section-title">📑 Lending Records</h2>
     <button onclick="loadLendings()" class="btn">Load Records</button>
     <ul id="lendingList" class="record-list"></ul>
-  </div>
 
+    <h2 class="section-title">📌 Due Date Tracker</h2>
+
+    <div class="tracker-section">
+      <button onclick="loadOverdue()" class="btn danger">Show Overdue</button>
+      <ul id="overdueList" class="record-list overdue"></ul>
+    </div>
+
+    <div class="tracker-section">
+      <button onclick="loadDueSoon()" class="btn warning">Show Due Soon</button>
+      <ul id="dueSoonList" class="record-list due-soon"></ul>
+    </div>
+
+  </div>
   <script src="js_files/lending.js"></script>
 </body>
 </html>

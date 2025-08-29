@@ -48,4 +48,40 @@ const deleteLending = async (req, res) => {
   }
 };
 
-module.exports = { addLending, getLendings, markReturned, deleteLending };
+// Get overdue books
+const getOverdueBooks = async (req, res) => {
+  try {
+    const today = new Date();
+    const overdue = await Lending.find({ dueDate: { $lt: today }, status: 'lent' });
+    res.json(overdue);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get books due within next 3 days
+const getDueSoonBooks = async (req, res) => {
+  try {
+    const today = new Date();
+    const threeDaysLater = new Date();
+    threeDaysLater.setDate(today.getDate() + 3);
+
+    const dueSoon = await Lending.find({
+      dueDate: { $gte: today, $lte: threeDaysLater },
+      status: 'lent'
+    });
+
+    res.json(dueSoon);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = {
+  addLending,
+  getLendings,
+  markReturned,
+  deleteLending,
+  getOverdueBooks,
+  getDueSoonBooks
+};

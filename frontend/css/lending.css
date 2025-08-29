@@ -4,18 +4,15 @@
   --indigo-tint: #4DB6AC;
   --grey-base: #6C757D;
   --grey-shade: #343A40;
-  --grey-tint: #CED4DA;
+  --grey-tint: #F1F3F5;
+  --danger: #D32F2F;
+  --warning: #F9A825;
 
   --font-heading: "Roslindale SemiBold", serif;
-  --font-logo-quote: "Roslindale", serif;
   --font-body: "Helvetica Neue", sans-serif;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: var(--font-body);
@@ -25,14 +22,14 @@ body {
 }
 
 .container {
-  max-width: 600px;
+  max-width: 700px;
   margin: auto;
 }
 
 .section-title {
   font-family: var(--font-heading);
   color: var(--indigo-shade);
-  margin: 1.5rem 0 1rem 0;
+  margin: 1.5rem 0 1rem;
 }
 
 .form-card {
@@ -48,7 +45,7 @@ body {
 
 .input-field {
   padding: 0.7rem;
-  border: 1px solid var(--grey-tint);
+  border: 1px solid var(--grey-base);
   border-radius: 8px;
   font-size: 1rem;
 }
@@ -71,9 +68,13 @@ body {
   transition: background 0.2s ease-in-out;
 }
 
-.btn:hover {
-  background: var(--indigo-shade);
-}
+.btn:hover { background: var(--indigo-shade); }
+
+.btn.danger { background: var(--danger); }
+.btn.danger:hover { background: #B71C1C; }
+
+.btn.warning { background: var(--warning); color: #222; }
+.btn.warning:hover { background: #F57F17; color: #fff; }
 
 .record-list {
   margin-top: 1rem;
@@ -89,6 +90,9 @@ body {
   box-shadow: 0px 3px 10px rgba(0,0,0,0.05);
 }
 
+.record-list.overdue li { border-left-color: var(--danger); }
+.record-list.due-soon li { border-left-color: var(--warning); }
+
 .record-list li strong {
   font-family: var(--font-heading);
   color: var(--indigo-shade);
@@ -100,3 +104,5 @@ body {
   font-size: 0.9rem;
   color: var(--grey-base);
 }
+
+.tracker-section { margin-top: 1.5rem; }
