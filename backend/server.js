@@ -20,6 +20,9 @@ app.use('/api/habits', require('./routes/habitRoutes'));
 
 app.use('/api/lending', require('./routes/lendingRoutes'));
 
+app.use('/api/books', require('./routes/booklistingRoutes'));
+
+
 // Connect to MongoDB
 connectDB();
 
