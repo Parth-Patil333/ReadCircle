@@ -1,21 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Journal Test</title>
-    <link rel="stylesheet" href="css/jornal.css">
+  <meta charset="UTF-8">
+  <title>Journal Test</title>
+  <link rel="stylesheet" href="css/jornal.css">
 </head>
 <body>
-  <h2>Add Journal Entry</h2>
-  <form id="journalForm">
-    <input type="text" id="title" placeholder="Title" required><br>
-    <textarea id="content" placeholder="Your reflection" required></textarea><br>
-    <input type="text" id="tags" placeholder="Tags (comma separated)"><br>
-    <button type="submit">Add Entry</button>
-  </form>
+  <div class="container">
+    <h2 class="section-title">Add Journal Entry</h2>
+    <form id="journalForm" class="form-card">
+      <input type="text" id="title" class="input-field" placeholder="Title" required>
+      <textarea id="content" class="input-field" placeholder="Your reflection" required></textarea>
+      <input type="text" id="tags" class="input-field" placeholder="Tags (comma separated)">
+      <button type="submit" class="btn">Add Entry</button>
+    </form>
 
-  <h2>All Entries</h2>
-  <button onclick="loadEntries()">Load</button>
-  <ul id="entriesList"></ul>
+    <h2 class="section-title">All Entries</h2>
+    <button onclick="loadEntries()" class="btn">Load</button>
+    <ul id="entriesList" class="record-list"></ul>
+  </div>
 
   <script src="js_files/jornal-test.js"></script>
 </body>

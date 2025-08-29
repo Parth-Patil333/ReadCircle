@@ -1,110 +1,111 @@
 :root {
-    --indigo-shade: #00796B;
-    --indigo-base: #009688;
-    --indigo-tint: #4DB6AC;
-    --grey-base: #6C757D;
-    --grey-shade: #343A40;
-    --grey-tint: #CED4DA;
+  --indigo-shade: #00796B;
+  --indigo-base: #009688;
+  --indigo-tint: #4DB6AC;
+  --grey-base: #6C757D;
+  --grey-shade: #343A40;
+  --grey-tint: #CED4DA;
 
-    --font-heading: "Roslindale SemiBold", serif;
-    --font-logo-quote: "Roslindale", serif;
-    --font-body: "Helvetica Neue", sans-serif;
+  --font-heading: "Roslindale SemiBold", serif;
+  --font-logo-quote: "Roslindale", serif;
+  --font-body: "Helvetica Neue", sans-serif;
 }
 
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    text-decoration: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    font-family: var(--font-body);
-    background-color: var(--grey-tint);
-    padding: 2rem;
-    color: var(--grey-shade);
+  font-family: var(--font-body);
+  background-color: var(--grey-tint);
+  padding: 2rem;
+  color: var(--grey-shade);
 }
 
-h2 {
-    font-family: var(--font-heading);
-    color: var(--indigo-shade);
-    margin-bottom: 1rem;
+.container {
+  max-width: 700px;
+  margin: auto;
 }
 
-form {
-    background: #fff;
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.08);
-    max-width: 500px;
-    margin-bottom: 2rem;
+.section-title {
+  font-family: var(--font-heading);
+  color: var(--indigo-shade);
+  margin: 1.5rem 0 1rem 0;
 }
 
-form input,
-form textarea {
-    width: 100%;
-    padding: 0.7rem;
-    margin-bottom: 1rem;
-    border: 1px solid var(--grey-tint);
-    border-radius: 8px;
-    font-size: 1rem;
+.form-card {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0px 6px 20px rgba(0,0,0,0.08);
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-form textarea {
-    min-height: 120px;
-    resize: vertical;
+.input-field {
+  padding: 0.7rem;
+  border: 1px solid var(--grey-tint);
+  border-radius: 8px;
+  font-size: 1rem;
 }
 
-form input:focus,
-form textarea:focus {
-    outline: none;
-    border-color: var(--indigo-base);
-    box-shadow: 0 0 0 2px rgba(0, 150, 136, 0.2);
+.input-field:focus {
+  outline: none;
+  border-color: var(--indigo-base);
+  box-shadow: 0 0 0 2px rgba(0, 150, 136, 0.2);
 }
 
-button {
-    background: var(--indigo-base);
-    color: #fff;
-    padding: 0.7rem 1.2rem;
-    font-size: 1rem;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background 0.2s ease-in-out;
+textarea.input-field {
+  min-height: 120px;
+  resize: vertical;
 }
 
-button:hover {
-    background: var(--indigo-shade);
+.btn {
+  background: var(--indigo-base);
+  color: #fff;
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s ease-in-out;
 }
 
-#entriesList {
-    margin-top: 1rem;
-    padding: 0;
+.btn:hover {
+  background: var(--indigo-shade);
 }
 
-#entriesList li {
-    background: #fff;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    border-radius: 8px;
-    border-left: 5px solid var(--indigo-base);
-    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.05);
+.record-list {
+  margin-top: 1rem;
+  padding: 0;
 }
 
-#entriesList li h3 {
-    font-family: var(--font-heading);
-    margin-bottom: 0.3rem;
-    color: var(--indigo-shade);
+.record-list li {
+  background: #fff;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  border-left: 5px solid var(--indigo-base);
+  box-shadow: 0px 3px 10px rgba(0,0,0,0.05);
 }
 
-#entriesList li p {
-    font-size: 0.95rem;
-    margin-bottom: 0.5rem;
+.record-list li h3 {
+  font-family: var(--font-heading);
+  margin-bottom: 0.3rem;
+  color: var(--indigo-shade);
 }
 
-#entriesList li span {
-    font-size: 0.85rem;
-    color: var(--grey-base);
+.record-list li p {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.record-list li span {
+  font-size: 0.85rem;
+  color: var(--grey-base);
 }
