@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Habit Tracker Test</title>
+  <link rel="stylesheet" href="css/habit.css">
+</head>
+<body>
+  <div class="container">
+    <h2 class="section-title">Set Goal</h2>
+    <form id="habitForm" class="form-card">
+      <select id="goalType" class="input-field">
+        <option value="pages">Pages</option>
+        <option value="minutes">Minutes</option>
+      </select>
+      <input type="number" id="goalValue" class="input-field" placeholder="Enter goal value" required>
+      <button type="submit" class="btn">Set Goal</button>
+    </form>
+
+    <h2 class="section-title">Update Progress</h2>
+    <form id="progressForm" class="form-card">
+      <input type="number" id="progress" class="input-field" placeholder="Progress today" required>
+      <button type="submit" class="btn">Update</button>
+    </form>
+
+    <h2 class="section-title">Habit Info</h2>
+    <button onclick="loadHabit()" class="btn">Load Habit</button>
+    <pre id="habitInfo" class="info-box"></pre>
+  </div>
+
+  <script src="js_files/habit.js"></script>
+</body>
+</html>

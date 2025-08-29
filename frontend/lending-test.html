@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lending Tracker Test</title>
+  <link rel="stylesheet" href="css/lending.css">
+</head>
+<body>
+  <div class="container">
+    <h2 class="section-title">Lend Book</h2>
+    <form id="lendingForm" class="form-card">
+      <input type="text" id="bookTitle" class="input-field" placeholder="Book Title" required>
+      <input type="text" id="borrowerName" class="input-field" placeholder="Borrower Name" required>
+      <input type="text" id="borrowerContact" class="input-field" placeholder="Borrower Contact" required>
+      <input type="date" id="dueDate" class="input-field" required>
+      <button type="submit" class="btn">Lend Book</button>
+    </form>
+
+    <h2 class="section-title">Lending Records</h2>
+    <button onclick="loadLendings()" class="btn">Load Records</button>
+    <ul id="lendingList" class="record-list"></ul>
+  </div>
+
+  <script src="js_files/lending.js"></script>
+</body>
+</html>

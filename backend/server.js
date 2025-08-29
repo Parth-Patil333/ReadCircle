@@ -16,6 +16,10 @@ app.use('/api/books', require('./routes/bookRoutes'));
 
 app.use('/api/journal', require('./routes/journalRoutes'));
 
+app.use('/api/habits', require('./routes/habitRoutes'));
+
+app.use('/api/lending', require('./routes/lendingRoutes'));
+
 // Connect to MongoDB
 connectDB();
 
