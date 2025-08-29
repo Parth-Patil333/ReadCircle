@@ -1,6 +1,6 @@
-
 const API_BASE_URL = "https://readcircle.onrender.com";
 
+// --- Add Lending ---
 document.getElementById('lendingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const bookTitle = document.getElementById('bookTitle').value;
@@ -15,8 +15,10 @@ document.getElementById('lendingForm').addEventListener('submit', async (e) => {
     });
     const data = await res.json();
     alert(data.message);
+    loadLendings();
 });
 
+// --- Load Lending Records ---
 async function loadLendings() {
     const res = await fetch(`${API_BASE_URL}/api/lending`);
     const lendings = await res.json();
@@ -24,7 +26,34 @@ async function loadLendings() {
     list.innerHTML = '';
     lendings.forEach(lending => {
         const li = document.createElement('li');
-        li.textContent = `${lending.bookTitle} → ${lending.borrowerName} (Due: ${new Date(lending.dueDate).toLocaleDateString()}, Status: ${lending.status})`;
+        li.innerHTML = `
+          <strong>${lending.bookTitle}</strong> → ${lending.borrowerName} 
+          (Due: ${new Date(lending.dueDate).toLocaleDateString()}, Status: ${lending.status})
+          <button onclick="markReturned('${lending._id}')">✔ Return</button>
+          <button onclick="deleteLending('${lending._id}')">❌ Delete</button>
+        `;
         list.appendChild(li);
     });
+}
+
+// --- Mark as Returned ---
+async function markReturned(id) {
+    const res = await fetch(`${API_BASE_URL}/api/lending/${id}/return`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadLendings();
+}
+
+// --- Delete Lending ---
+async function deleteLending(id) {
+    const res = await fetch(`${API_BASE_URL}/api/lending/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadLendings();
 }
