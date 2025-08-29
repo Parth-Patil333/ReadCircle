@@ -1,0 +1,105 @@
+:root {
+  --indigo-shade: #00796B;
+  --indigo-base: #009688;
+  --indigo-tint: #4DB6AC;
+  --grey-base: #6C757D;
+  --grey-shade: #343A40;
+  --grey-tint: #CED4DA;
+
+  --font-heading: "Roslindale SemiBold", serif;
+  --font-logo-quote: "Roslindale", serif;
+  --font-body: "Helvetica Neue", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--grey-tint);
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  color: var(--grey-shade);
+}
+
+.container {
+  background: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  width: 420px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+h2 {
+  font-family: var(--font-heading);
+  color: var(--indigo-shade);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.form-box input,
+.form-box select {
+  padding: 10px;
+  border: 1px solid var(--grey-tint);
+  border-radius: 6px;
+  outline: none;
+  font-size: 14px;
+  font-family: var(--font-body);
+  transition: 0.2s;
+}
+
+.form-box input:focus,
+.form-box select:focus {
+  border-color: var(--indigo-base);
+  box-shadow: 0 0 4px var(--indigo-tint);
+}
+
+.btn {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--font-body);
+  transition: 0.3s;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+
+.btn {
+  background: var(--indigo-base);
+  color: #fff;
+}
+
+.btn.secondary {
+  background: var(--indigo-shade);
+  color: #fff;
+  margin-bottom: 15px;
+}
+
+.list-box {
+  list-style: none;
+  padding: 0;
+}
+
+.list-box li {
+  background: var(--indigo-tint);
+  color: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}

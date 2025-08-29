@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Book Selling & Buying Test</title>
+  <link rel="stylesheet" href="css/listing.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Add Book Listing</h2>
+    <form id="listingForm" class="form-box">
+      <input type="text" id="title" placeholder="Book Title" required>
+      <input type="text" id="author" placeholder="Author">
+      
+      <select id="condition">
+        <option value="New">New</option>
+        <option value="Good">Good</option>
+        <option value="Fair">Fair</option>
+        <option value="Poor">Poor</option>
+      </select>
+
+      <input type="text" id="sellerName" placeholder="Seller Name" required>
+      <input type="text" id="sellerContact" placeholder="Contact" required>
+      <input type="text" id="sellerAddress" placeholder="Address" required>
+
+      <button type="submit" class="btn">Add Listing</button>
+    </form>
+
+    <h2>Available Listings</h2>
+    <button onclick="loadListings()" class="btn secondary">Load Listings</button>
+    <ul id="listingList" class="list-box"></ul>
+  </div>
+
+  <script src="js_files/listing.js"></script>
+</body>
+</html>
