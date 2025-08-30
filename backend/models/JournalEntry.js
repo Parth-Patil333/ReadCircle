@@ -1,10 +1,11 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const journalEntrySchema = new mongoose.Schema({
-  title: { type: String, required: true },       // Entry title
-  content: { type: String, required: true },     // User’s reflection
-  tags: { type: [String], default: [] },         // e.g., ["insightful", "motivational"]
-  date: { type: Date, default: Date.now }        // Auto-filled
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  tags: [{ type: String }], // e.g., ["insightful", "emotional"]
+  createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('JournalEntry', journalEntrySchema);
+module.exports = mongoose.model("JournalEntry", journalEntrySchema);

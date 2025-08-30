@@ -1,21 +1,26 @@
-const JournalEntry = require('../models/JournalEntry');
+const JournalEntry = require("../models/JournalEntry");
 
 // Add new journal entry
 const addEntry = async (req, res) => {
   try {
     const { title, content, tags } = req.body;
-    const entry = new JournalEntry({ title, content, tags });
+    const entry = new JournalEntry({
+      userId: req.user.id, // will come from auth later
+      title,
+      content,
+      tags
+    });
     await entry.save();
-    res.status(201).json({ message: 'Journal entry added', entry });
+    res.json({ message: "Journal entry added", entry });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Get all journal entries
+// Get all journal entries of logged-in user
 const getEntries = async (req, res) => {
   try {
-    const entries = await JournalEntry.find().sort({ date: -1 });
+    const entries = await JournalEntry.find({ userId: req.user.id }).sort({ createdAt: -1 });
     res.json(entries);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -27,11 +32,13 @@ const updateEntry = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, content, tags } = req.body;
-    const entry = await JournalEntry.findByIdAndUpdate(
-      id, { title, content, tags }, { new: true }
+    const entry = await JournalEntry.findOneAndUpdate(
+      { _id: id, userId: req.user.id },
+      { title, content, tags },
+      { new: true }
     );
-    if (!entry) return res.status(404).json({ message: 'Entry not found' });
-    res.json({ message: 'Journal entry updated', entry });
+    if (!entry) return res.status(404).json({ message: "Entry not found" });
+    res.json({ message: "Journal entry updated", entry });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -41,9 +48,9 @@ const updateEntry = async (req, res) => {
 const deleteEntry = async (req, res) => {
   try {
     const { id } = req.params;
-    const entry = await JournalEntry.findByIdAndDelete(id);
-    if (!entry) return res.status(404).json({ message: 'Entry not found' });
-    res.json({ message: 'Journal entry deleted' });
+    const result = await JournalEntry.findOneAndDelete({ _id: id, userId: req.user.id });
+    if (!result) return res.status(404).json({ message: "Entry not found" });
+    res.json({ message: "Journal entry deleted" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

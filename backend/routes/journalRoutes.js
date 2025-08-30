@@ -1,17 +1,11 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { addEntry, getEntries, updateEntry, deleteEntry } = require('../controllers/journalController');
+const { addEntry, getEntries, updateEntry, deleteEntry } = require("../controllers/journalController");
 
-// Add new entry
-router.post('/', addEntry);
-
-// Get all entries
-router.get('/', getEntries);
-
-// Update entry
-router.put('/:id', updateEntry);
-
-// Delete entry
-router.delete('/:id', deleteEntry);
+// CRUD routes for journal
+router.post("/", addEntry);
+router.get("/", getEntries);
+router.put("/:id", updateEntry);
+router.delete("/:id", deleteEntry);
 
 module.exports = router;

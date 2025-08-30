@@ -2,22 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Journal Test</title>
   <link rel="stylesheet" href="css/jornal.css">
 </head>
 <body>
   <div class="container">
-    <h2 class="section-title">Add Journal Entry</h2>
-    <form id="journalForm" class="form-card">
-      <input type="text" id="title" class="input-field" placeholder="Title" required>
-      <textarea id="content" class="input-field" placeholder="Your reflection" required></textarea>
-      <input type="text" id="tags" class="input-field" placeholder="Tags (comma separated)">
+    <h2>Journal Test Page</h2>
+
+    <h3>Add Journal Entry</h3>
+    <form id="addJournalForm" class="form-box">
+      <input type="text" id="title" placeholder="Title" required>
+      <textarea id="content" placeholder="Your reflection" required></textarea>
+      <input type="text" id="tags" placeholder="Tags (comma separated)">
       <button type="submit" class="btn">Add Entry</button>
     </form>
 
-    <h2 class="section-title">All Entries</h2>
-    <button onclick="loadEntries()" class="btn">Load</button>
-    <ul id="entriesList" class="record-list"></ul>
+    <h3>Journal Entries</h3>
+    <div id="journalEntries" class="entries"></div>
   </div>
 
   <script src="js_files/jornal-test.js"></script>
