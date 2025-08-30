@@ -26,6 +26,9 @@ app.use('/api/books', require('./routes/booklistingRoutes'));
 // Connect to MongoDB
 connectDB();
 
+// Load cron jobs
+require("./cron/cleanup");
+
 // Test route
 app.get('/', (req, res) => {
   res.send('ReadCircle Backend is running...');

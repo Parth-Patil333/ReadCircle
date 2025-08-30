@@ -6,7 +6,8 @@ const {
   updateListing,
   deleteListing,
   confirmListing,
-  cancelListing
+  cancelListing,
+  cleanupListing
 } = require('../controllers/booklistingController');
 
 // Add listing
@@ -26,5 +27,9 @@ router.put('/:id/confirm', confirmListing);
 
 // Cancel confirmed listing
 router.put('/:id/cancel', cancelListing);
+
+// Manual cleanup trigger
+router.delete("/cleanup", cleanupListing);
+
 
 module.exports = router;

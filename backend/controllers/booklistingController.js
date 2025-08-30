@@ -81,10 +81,20 @@ const cancelListing = async (req, res) => {
 };
 
 // Cleanup: delete confirmed listings if not continued within 48 hrs
-const cleanupListings = async () => {
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000); // 48 hours ago
-  await BookListing.deleteMany({ status: 'confirmed', confirmedAt: { $lt: cutoff } });
+const cleanupListings = async (req, res) => {
+  try {
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    const result = await BookListing.deleteMany({
+      status: "confirmed",
+      confirmedAt: { $lt: cutoff }
+    });
+
+    res.json({ message: `Cleanup done. Removed ${result.deletedCount} listings.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 module.exports = {
@@ -96,3 +106,4 @@ module.exports = {
   cancelListing,
   cleanupListings
 };
+
