@@ -15,7 +15,7 @@ const addListing = async (req, res) => {
 // Get all available listings
 const getListings = async (req, res) => {
   try {
-    const listings = await BookListing.find({ status: 'available' }).sort({ createdAt: -1 });
+    const listings = await BookListing.find().sort({ createdAt: -1 });
     res.json(listings);
   } catch (err) {
     res.status(500).json({ error: err.message });
