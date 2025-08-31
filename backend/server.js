@@ -1,5 +1,8 @@
 const express = require('express');
 require('dotenv').config();
+
+delete process.env.DEBUG_URL;
+
 const connectDB = require('./config/db'); // <-- Added
 const cors = require('cors');
 const app = express();
