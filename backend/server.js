@@ -5,7 +5,6 @@ const cors = require('cors');
 const app = express();
 
 
-
 app.use(express.json());
 
 // ✅ Fix CORS
@@ -27,7 +26,7 @@ app.use('/api/habits', require('./routes/habitRoutes'));
 
 app.use('/api/lending', require('./routes/lendingRoutes'));
 
-app.use('/api/books', require('./routes/booklistingRoutes'));
+app.use('/api/booklisting', require('./routes/booklistingRoutes'));
 
 
 // Connect to MongoDB
