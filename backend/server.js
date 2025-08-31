@@ -4,11 +4,18 @@ const connectDB = require('./config/db'); // <-- Added
 const cors = require('cors');
 const app = express();
 
+
+
 app.use(express.json());
 
-// After app.use(express.json());
-// app.use('/api/test', require('./routes/testRoutes'));
-app.use(cors());
+// ✅ Fix CORS
+app.use(cors({
+  origin: "https://readcircle.netlify.app",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true
+}));
+app.options('*', cors());
+
 
 app.use('/api/auth', require('./routes/authRoutes'));
 
