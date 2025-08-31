@@ -1,12 +1,11 @@
 const express = require('express');
 require('dotenv').config();
 
-delete process.env.DEBUG_URL;
+delete process.env.DEBUG_URL; // ✅ good to prevent regex error
 
-const connectDB = require('./config/db'); // <-- Added
+const connectDB = require('./config/db');
 const cors = require('cors');
 const app = express();
-
 
 app.use(express.json());
 
@@ -18,19 +17,14 @@ app.use(cors({
 }));
 app.options('*', cors());
 
-
-app.use('/api/auth', require('./routes/authRoutes'));
-
+// ✅ Correct routes
+app.use('/api/auth', require('./routes/authRoute')); 
 app.use('/api/books', require('./routes/bookRoutes'));
-
 app.use('/api/journal', require('./routes/journalRoutes'));
-
 app.use('/api/habits', require('./routes/habitRoutes'));
-
 app.use('/api/lending', require('./routes/lendingRoutes'));
-
-app.use('/api/booklisting', require('./routes/booklistingRoutes'));
-
+app.use('/api/booklisting', require('./routes/booklistingRoute'));
+app.use('/api/test', require('./routes/testRoute')); // optional
 
 // Connect to MongoDB
 connectDB();
