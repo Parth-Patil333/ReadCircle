@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Test = require('../models/Test');
+const Test = require('../models/test');
 const auth = require("../middleware/auth");
 
 // POST - Add a test entry
