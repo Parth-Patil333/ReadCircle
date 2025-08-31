@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Test = require('../models/Test');
+const auth = require("../middleware/auth");
 
 // POST - Add a test entry
 router.post('/', async (req, res) => {

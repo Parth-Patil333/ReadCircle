@@ -8,23 +8,24 @@ const {
   getOverdueBooks,
   getDueSoonBooks
 } = require('../controllers/lendingController');
+const auth = require("../middleware/auth");
 
 // Add lending
-router.post('/', addLending);
+router.post('/', auth, addLending);
 
 // Get all lendings
-router.get('/', getLendings);
+router.get('/', auth, getLendings);
 
 // Mark returned
-router.put('/:id/return', markReturned);
+router.put('/:id/return', auth, markReturned);
 
 // Delete record
-router.delete('/:id', deleteLending);
+router.delete('/:id',auth, deleteLending);
 
 // Get overdue books
-router.get('/overdue', getOverdueBooks);
+router.get('/overdue', auth, getOverdueBooks);
 
 // Get books due soon (next 3 days)
-router.get('/due-soon', getDueSoonBooks);
+router.get('/due-soon', auth, getDueSoonBooks);
 
 module.exports = router;

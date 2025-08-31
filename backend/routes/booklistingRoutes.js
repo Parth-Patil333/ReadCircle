@@ -9,27 +9,28 @@ const {
   cancelListing,
   cleanupListings
 } = require('../controllers/booklistingController');
+const auth = require("../middleware/auth");
 
 // Add listing
-router.post('/', addListing);
+router.post('/', auth, addListing);
 
 // Get all available listings
-router.get('/', getListings);
+router.get('/', auth, getListings);
 
 // Update listing
-router.put('/:id', updateListing);
+router.put('/:id', auth, updateListing);
 
 // Delete listing
-router.delete('/:id', deleteListing);
+router.delete('/:id', auth, deleteListing);
 
 // Confirm listing
-router.put('/:id/confirm', confirmListing);
+router.put('/:id/confirm', auth, confirmListing);
 
 // Cancel confirmed listing
-router.put('/:id/cancel', cancelListing);
+router.put('/:id/cancel', auth, cancelListing);
 
 // Manual cleanup trigger
-router.delete("/cleanup", cleanupListings);
+router.delete("/cleanup", auth, cleanupListings);
 
 
 module.exports = router;
