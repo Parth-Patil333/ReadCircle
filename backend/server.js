@@ -1,7 +1,7 @@
 // server.js
 // 🚀 Prevent Render's DEBUG_URL issue at the very top
 if (process.env.DEBUG_URL) {
-  delete process.env.DEBUG_URL;
+  process.env.DEBUG_URL = ""; // Make it safe
 }
 
 const express = require('express');
@@ -15,7 +15,7 @@ app.use(express.json());
 
 // ✅ Fix CORS
 app.use(cors({
-  origin: "https://readcircle.netlify.app",
+  origin: "https://readcircle.netlify.app", // your frontend on Netlify
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true
 }));
@@ -41,6 +41,8 @@ app.get('/', (req, res) => {
   res.send('ReadCircle Backend is running...');
 });
 
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+// ✅ Start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
