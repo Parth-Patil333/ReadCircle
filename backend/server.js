@@ -22,13 +22,13 @@ app.use(cors({
 app.options('*', cors());
 
 // ✅ Routes
-app.use('/api/auth', require('./routes/authRoute'));
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/books', require('./routes/bookRoutes'));
 app.use('/api/journal', require('./routes/journalRoutes'));
 app.use('/api/habits', require('./routes/habitRoutes'));
 app.use('/api/lending', require('./routes/lendingRoutes'));
 app.use('/api/booklisting', require('./routes/booklistingRoute'));
-app.use('/api/test', require('./routes/testRoute')); // optional
+app.use('/api/test', require('./routes/testRoutes')); // optional
 
 // ✅ Connect DB
 connectDB();
