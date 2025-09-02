@@ -1,7 +1,10 @@
 const express = require('express');
 require('dotenv').config();
 
-delete process.env.DEBUG_URL; // ✅ good to prevent regex error
+// 🚑 Render sets DEBUG_URL automatically, which breaks path-to-regexp
+if (process.env.DEBUG_URL) {
+  delete process.env.DEBUG_URL;
+}
 
 const connectDB = require('./config/db');
 const cors = require('cors');
