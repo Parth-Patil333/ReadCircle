@@ -1,26 +1,27 @@
+const BASE_URL = "https://readcircle.onrender.com/api/auth/login";
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
 
-    try {
-        const res = await fetch('https://readcircle.onrender.com/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
+  try {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
 
-        const data = await res.json();
-        if (res.ok) {
-            alert(data.message);
-            window.location.href = 'test-books.html'; // Redirect after login
-        } else {
-            alert(data.message || 'Login failed');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Something went wrong. Please try again.');
+    const data = await res.json();
+    alert(data.message);
+
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      window.location.href = "jornal-test.html"; // redirect after login
     }
+  } catch (err) {
+    console.error(err);
+    alert("Login failed");
+  }
 });

@@ -1,34 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - ReadCircle</title>
-    <link rel="stylesheet" href="css/register_style.css">
+  <meta charset="UTF-8">
+  <title>Register - ReadCircle</title>
+  <link rel="stylesheet" href="css/register_style.css">
 </head>
 <body>
-    <div class="register-container">
-        <h1 class="register-title">Create Account</h1>
-        <p class="register-subtitle">Join ReadCircle today</p>
+  <div class="register-container">
+    <h2>Create Your Account</h2>
+    <form id="registerForm" class="form-box">
+      <input type="text" id="username" placeholder="Username" required>
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button type="submit" class="btn">Register</button>
+    </form>
+    <p class="login-link">
+      Already have an account? <a href="login.html">Login here</a>
+    </p>
+  </div>
 
-        <form class="register-form" id="registerForm">
-            <label for="username">Username</label>
-            <input type="text" id="username" placeholder="Choose a username" required>
-
-            <label for="email">Email</label>
-            <input type="email" id="email" placeholder="Enter your email" required>
-
-            <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Create a password" required>
-
-            <button type="submit">Register</button>
-        </form>
-
-        <p class="login-text">
-            Already have an account? <a href="login.html">Login</a>
-        </p>
-    </div>
-
-    <script src="../js_files/register.js"></script>
+  <script src="js_files/register.js"></script>
 </body>
 </html>

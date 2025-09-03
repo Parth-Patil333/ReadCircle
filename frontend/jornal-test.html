@@ -2,24 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Journal Test</title>
+  <title>Journal - ReadCircle</title>
   <link rel="stylesheet" href="css/jornal.css">
 </head>
 <body>
-  <div class="container">
-    <h2>Journal Test Page</h2>
+  <div class="journal-container">
+    <h2>My Journal</h2>
 
-    <h3>Add Journal Entry</h3>
-    <form id="addJournalForm" class="form-box">
+    <!-- Add entry form -->
+    <form id="journalForm" class="form-box">
       <input type="text" id="title" placeholder="Title" required>
       <textarea id="content" placeholder="Your reflection" required></textarea>
       <input type="text" id="tags" placeholder="Tags (comma separated)">
       <button type="submit" class="btn">Add Entry</button>
     </form>
 
-    <h3>Journal Entries</h3>
-    <div id="journalEntries" class="entries"></div>
+    <h3>My Entries</h3>
+    <div id="journalList" class="entries-list"></div>
+
+    <p class="back-link"><a href="dashboard.html">⬅ Back to Dashboard</a></p>
   </div>
 
   <script src="js_files/jornal-test.js"></script>

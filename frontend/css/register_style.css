@@ -1,103 +1,93 @@
 :root {
-    --indigo-shade: #00796B;
-    --indigo-base: #009688;
-    --indigo-tint: #4DB6AC;
-    --grey-base: #6C757D;
-    --grey-shade: #343A40;
-    --grey-tint: #CED4DA;
+  --indigo-shade: #00796B;
+  --indigo-base: #009688;
+  --indigo-tint: #4DB6AC;
+  --grey-base: #6C757D;
+  --grey-shade: #343A40;
+  --grey-tint: #CED4DA;
 
-    --font-heading: "Roslindale SemiBold", serif;
-    --font-logo-quote: "Roslindale", serif;
-    --font-body: "Helvetica Neue", sans-serif;
+  --font-heading: "Roslindale SemiBold", serif;
+  --font-body: "Helvetica Neue", sans-serif;
 }
 
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    text-decoration: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    font-family: var(--font-body);
-    background-color: var(--grey-tint);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+  font-family: var(--font-body);
+  background: var(--grey-tint);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  color: var(--grey-shade);
 }
 
 .register-container {
-    background: #fff;
-    padding: 2rem 2.5rem;
-    border-radius: 12px;
-    box-shadow: 0px 6px 20px rgba(0,0,0,0.1);
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  width: 400px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  text-align: center;
 }
 
-.register-title {
-    font-family: var(--font-heading);
-    color: var(--indigo-shade);
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+h2 {
+  font-family: var(--font-heading);
+  color: var(--indigo-shade);
+  margin-bottom: 20px;
 }
 
-.register-subtitle {
-    color: var(--grey-base);
-    margin-bottom: 1.5rem;
+.form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
 }
 
-.register-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    text-align: left;
+.form-box input {
+  padding: 12px;
+  border: 1px solid var(--grey-tint);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: 0.2s;
 }
 
-.register-form label {
-    font-weight: 500;
-    font-size: 0.95rem;
-    color: var(--grey-shade);
+.form-box input:focus {
+  border-color: var(--indigo-base);
+  box-shadow: 0 0 4px var(--indigo-tint);
+  outline: none;
 }
 
-.register-form input {
-    padding: 0.6rem;
-    border: 1px solid var(--grey-tint);
-    border-radius: 8px;
-    font-size: 1rem;
+.btn {
+  padding: 12px;
+  background: var(--indigo-base);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
 }
 
-.register-form input:focus {
-    outline: none;
-    border-color: var(--indigo-base);
-    box-shadow: 0 0 0 2px rgba(0, 150, 136, 0.2);
+.btn:hover {
+  background: var(--indigo-shade);
 }
 
-button {
-    background: var(--indigo-base);
-    color: white;
-    padding: 0.7rem;
-    font-size: 1rem;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
+.login-link {
+  font-size: 14px;
+  margin-top: 10px;
 }
 
-button:hover {
-    background: var(--indigo-shade);
+.login-link a {
+  color: var(--indigo-base);
+  text-decoration: none;
+  font-weight: bold;
 }
 
-.login-text {
-    margin-top: 1rem;
-    font-size: 0.9rem;
-    color: var(--grey-base);
-}
-
-.login-text a {
-    color: var(--indigo-base);
-    font-weight: bold;
+.login-link a:hover {
+  text-decoration: underline;
 }

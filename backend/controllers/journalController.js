@@ -5,7 +5,7 @@ const addEntry = async (req, res) => {
   try {
     const { title, content, tags } = req.body;
     const entry = new JournalEntry({
-      userId: req.user.id, // will come from auth later
+      userId: req.user.id, // comes from JWT auth middleware
       title,
       content,
       tags
@@ -32,12 +32,14 @@ const updateEntry = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, content, tags } = req.body;
+
     const entry = await JournalEntry.findOneAndUpdate(
-      { _id: id, userId: req.user.id },
+      { _id: id, userId: req.user.id }, // only owner can update
       { title, content, tags },
       { new: true }
     );
-    if (!entry) return res.status(404).json({ message: "Entry not found" });
+
+    if (!entry) return res.status(404).json({ message: "Entry not found or not yours" });
     res.json({ message: "Journal entry updated", entry });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -48,8 +50,13 @@ const updateEntry = async (req, res) => {
 const deleteEntry = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await JournalEntry.findOneAndDelete({ _id: id, userId: req.user.id });
-    if (!result) return res.status(404).json({ message: "Entry not found" });
+
+    const result = await JournalEntry.findOneAndDelete({
+      _id: id,
+      userId: req.user.id // only owner can delete
+    });
+
+    if (!result) return res.status(404).json({ message: "Entry not found or not yours" });
     res.json({ message: "Journal entry deleted" });
   } catch (err) {
     res.status(500).json({ error: err.message });

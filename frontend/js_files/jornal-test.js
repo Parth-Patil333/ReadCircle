@@ -1,75 +1,135 @@
-const API_BASE_URL = "https://readcircle.onrender.com"; // replace with your Render backend URL after deploy
+const BASE_URL = "https://your-render-backend.onrender.com/api"; 
+// 🔑 replace with your actual Render backend URL
 
-// Load all entries
-async function loadEntries() {
-    const res = await fetch(`${API_BASE_URL}/api/journal`);
-    const data = await res.json();
-    const container = document.getElementById("journalEntries");
-    container.innerHTML = "";
-
-    data.forEach(entry => {
-        const div = document.createElement("div");
-        div.innerHTML = `
-          <h4>${entry.title}</h4>
-          <p>${entry.content}</p>
-          <p><small>Tags: ${entry.tags ? entry.tags.join(", ") : "None"}</small></p>
-          <button onclick="updateEntry('${entry._id}')">Update</button>
-          <button onclick="deleteEntry('${entry._id}')">Delete</button>
-          <hr>
-        `;
-        container.appendChild(div);
-    });
+// ✅ Ensure user is logged in
+const token = localStorage.getItem("token");
+if (!token) {
+  alert("You must log in first!");
+  window.location.href = "login.html";
 }
 
-// Add entry
-document.getElementById("addJournalForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const title = document.getElementById("title").value;
-    const content = document.getElementById("content").value;
-    const tags = document.getElementById("tags").value.split(",").map(t => t.trim()).filter(t => t);
+// Add new journal entry
+document.getElementById("journalForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const res = await fetch(`${API_BASE_URL}/api/journal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, tags })
+  const title = document.getElementById("title").value;
+  const content = document.getElementById("content").value;
+  const tags = document.getElementById("tags").value.split(",").map(t => t.trim());
+
+  try {
+    const res = await fetch(`${BASE_URL}/journal`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ title, content, tags })
     });
 
     const data = await res.json();
     alert(data.message || "Entry added");
-    loadEntries();
+
+    document.getElementById("journalForm").reset();
+    loadJournals();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to add journal entry");
+  }
 });
+
+// Load all journal entries for logged-in user
+async function loadJournals() {
+  try {
+    const res = await fetch(`${BASE_URL}/journal`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const data = await res.json();
+    const list = document.getElementById("journalList");
+    list.innerHTML = "";
+
+    data.forEach(entry => {
+      const div = document.createElement("div");
+      div.className = "entry-card";
+      div.innerHTML = `
+        <h4>${entry.title}</h4>
+        <p>${entry.content}</p>
+        <small>Tags: ${entry.tags?.join(", ") || "None"}</small><br>
+        <button class="btn edit-btn" onclick="editEntry('${entry._id}', '${entry.title}', '${entry.content}', '${entry.tags?.join(",") || ""}')">Edit</button>
+        <button class="btn delete-btn" onclick="deleteEntry('${entry._id}')">Delete</button>
+      `;
+      list.appendChild(div);
+    });
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load journals");
+  }
+}
+
+// Edit entry (prefill form)
+function editEntry(id, title, content, tags) {
+  document.getElementById("title").value = title;
+  document.getElementById("content").value = content;
+  document.getElementById("tags").value = tags;
+
+  // Change button to update mode
+  const btn = document.querySelector("#journalForm button");
+  btn.textContent = "Update Entry";
+  btn.onclick = function (e) {
+    e.preventDefault();
+    updateEntry(id);
+  };
+}
 
 // Update entry
 async function updateEntry(id) {
-    const newTitle = prompt("Enter new title:");
-    const newContent = prompt("Enter new content:");
-    const newTags = prompt("Enter new tags (comma separated):");
+  const title = document.getElementById("title").value;
+  const content = document.getElementById("content").value;
+  const tags = document.getElementById("tags").value.split(",").map(t => t.trim());
 
-    const res = await fetch(`${API_BASE_URL}/api/journal/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            title: newTitle,
-            content: newContent,
-            tags: newTags.split(",").map(t => t.trim()).filter(t => t)
-        })
+  try {
+    const res = await fetch(`${BASE_URL}/journal/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ title, content, tags })
     });
 
     const data = await res.json();
     alert(data.message || "Entry updated");
-    loadEntries();
+
+    document.getElementById("journalForm").reset();
+    const btn = document.querySelector("#journalForm button");
+    btn.textContent = "Add Entry";
+    btn.onclick = null; // reset back to normal submit
+
+    loadJournals();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to update entry");
+  }
 }
 
 // Delete entry
 async function deleteEntry(id) {
-    const res = await fetch(`${API_BASE_URL}/api/journal/${id}`, {
-        method: "DELETE"
+  if (!confirm("Are you sure you want to delete this entry?")) return;
+
+  try {
+    const res = await fetch(`${BASE_URL}/journal/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
     });
 
     const data = await res.json();
     alert(data.message || "Entry deleted");
-    loadEntries();
+    loadJournals();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to delete entry");
+  }
 }
 
-// Load entries on page load
-loadEntries();
+// Load on page open
+loadJournals();

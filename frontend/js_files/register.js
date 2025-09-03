@@ -1,26 +1,29 @@
-document.getElementById('registerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+const BASE_URL = "https://readcircle.onrender.com/api/auth/register"; 
+// 🔑 replace with your actual Render backend URL
 
-    const username = document.getElementById('username').value;
-    const email = document.getElementById('email').value;   // ✅ include email
-    const password = document.getElementById('password').value;
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    try {
-        const res = await fetch('https://readcircle.onrender.com/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })  // ✅ send all fields
-        });
+  const username = document.getElementById("username").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-        const data = await res.json();
-        if (res.ok) {
-            alert(data.message);
-            window.location.href = 'login.html'; // Redirect after registration
-        } else {
-            alert(data.message || 'Registration failed');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Something went wrong. Please try again.');
+  try {
+    const res = await fetch(`${BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password })
+    });
+
+    const data = await res.json();
+    alert(data.message);
+
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      window.location.href = "dashboard.html"; // redirect after register
     }
+  } catch (err) {
+    console.error(err);
+    alert("Registration failed");
+  }
 });
