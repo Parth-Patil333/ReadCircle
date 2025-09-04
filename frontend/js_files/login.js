@@ -18,7 +18,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 
     if (data.token) {
       localStorage.setItem("token", data.token);
-      window.location.href = "jornal-test.html"; // redirect after login
+      window.location.href = "dashboard.html"; // redirect after login
     }
   } catch (err) {
     console.error(err);

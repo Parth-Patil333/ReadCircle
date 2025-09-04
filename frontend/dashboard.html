@@ -1,11 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <title>ReadCircle — Dashboard</title>
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <!-- global helpers (requireAuth, parseJwt, getToken) -->
+  <script src="auth.js"></script>
 </head>
 <body>
-   <h1>its working</h1>
+  <div class="bg"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-dot"></span>
+      <span class="brand-text">ReadCircle</span>
+    </div>
+    <div class="userbox">
+      <span id="welcomeName">Reader</span>
+      <button id="logoutBtn" class="btn btn-ghost">Logout</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero glass">
+      <h2 class="greet">Welcome, <span id="welcomeInline">Reader</span> 👋</h2>
+      <p class="sub">Your private reading hub — jump into a section to continue.</p>
+      <div class="quick">
+        <a href="journal.html" class="chip">Journal</a>
+        <a href="bookshelf.html" class="chip">Bookshelf</a>
+        <a href="habits.html" class="chip">Habits</a>
+        <a href="lending.html" class="chip">Lending</a>
+        <a href="listings.html" class="chip">Listings</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <a class="card glass" href="journal.html">
+        <h3>Journal</h3>
+        <p>Capture reflections, tag insights, and review entries by day.</p>
+        <span class="cta">Open →</span>
+      </a>
+
+      <a class="card glass" href="bookshelf.html">
+        <h3>Bookshelf</h3>
+        <p>Track To Read / Reading / Finished. Keep your shelf tidy.</p>
+        <span class="cta">Open →</span>
+      </a>
+
+      <a class="card glass" href="habits.html">
+        <h3>Habits</h3>
+        <p>Build consistent reading streaks and hit your daily goals.</p>
+        <span class="cta">Open →</span>
+      </a>
+
+      <a class="card glass" href="lending.html">
+        <h3>Lending</h3>
+        <p>Separate lender/borrower roles, due dates, and returns.</p>
+        <span class="cta">Open →</span>
+      </a>
+
+      <a class="card glass" href="listings.html">
+        <h3>Listings</h3>
+        <p>Sell or buy books; confirmations and 48-hour cleanup built in.</p>
+        <span class="cta">Open →</span>
+      </a>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>© ReadCircle</span>
+  </footer>
+
+  <script src="js_files/dashboard.js"></script>
 </body>
 </html>
