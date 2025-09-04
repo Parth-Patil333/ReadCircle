@@ -1,12 +1,8 @@
 const BASE_URL = "https://readcircle.onrender.com/api";
-// 🔑 replace with your actual Render backend URL
 
 // ✅ Ensure user is logged in
-const token = localStorage.getItem("token");
-if (!token) {
-  alert("You must log in first!");
-  window.location.href = "login.html";
-}
+const token = requireAuth();
+
 
 // Add new journal entry
 document.getElementById("journalForm").addEventListener("submit", async (e) => {

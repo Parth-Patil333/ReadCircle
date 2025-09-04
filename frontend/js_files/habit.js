@@ -1,34 +1,41 @@
-const API_BASE_URL = "https://readcircle.onrender.com";
+// habit.js (protected page)
+const API_BASE_URL = "https://readcircle.onrender.com/api";
 
-document.getElementById('habitForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const goalType = document.getElementById('goalType').value;
-    const goalValue = document.getElementById('goalValue').value;
+// ✅ gate the page + get a valid token
+const token = requireAuth(); // comes from global auth.js
 
-    const res = await fetch(`${API_BASE_URL}/api/habits`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goalType, goalValue })
+// Example: load habits (adjust endpoint names if needed)
+async function loadHabits() {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/habits`, {
+      method: "GET"
     });
     const data = await res.json();
-    alert(data.message);
-});
 
-document.getElementById('progressForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const progress = document.getElementById('progress').value;
-
-    const res = await fetch(`${API_BASE_URL}/api/habits/progress`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ progress })
-    });
-    const data = await res.json();
-    alert(data.message);
-});
-
-async function loadHabit() {
-    const res = await fetch(`${API_BASE_URL}/api/habits`);
-    const data = await res.json();
-    document.getElementById('habitInfo').textContent = JSON.stringify(data, null, 2);
+    // TODO: render your habits in the DOM
+    console.log("My habits:", data);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load habits");
+  }
 }
+
+// Example: add a habit (adjust fields to your schema)
+async function addHabit(name) {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/habits`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    alert(data.message || "Habit added");
+    loadHabits();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to add habit");
+  }
+}
+
+// Call on page load
+loadHabits();
