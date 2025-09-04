@@ -1,4 +1,4 @@
-const BASE_URL = "https://readcircle.onrender.com/api/auth/register"; 
+const BASE_URL = "https://readcircle.onrender.com/api"; 
 // 🔑 replace with your actual Render backend URL
 
 document.getElementById("registerForm").addEventListener("submit", async (e) => {

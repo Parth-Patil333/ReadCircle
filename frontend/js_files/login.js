@@ -1,4 +1,4 @@
-const BASE_URL = "https://readcircle.onrender.com/api/auth/login";
+const BASE_URL = "https://readcircle.onrender.com/api";
 
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
