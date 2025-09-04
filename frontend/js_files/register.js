@@ -20,7 +20,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
 
     if (data.token) {
       localStorage.setItem("token", data.token);
-      window.location.href = "dashboard.html"; // redirect after register
+      window.location.href = "login.html"; // redirect after register
     }
   } catch (err) {
     console.error(err);
