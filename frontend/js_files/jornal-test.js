@@ -1,4 +1,4 @@
-const BASE_URL = "https://your-render-backend.onrender.com/api"; 
+const BASE_URL = "https://readcircle.onrender.com/api";
 // 🔑 replace with your actual Render backend URL
 
 // ✅ Ensure user is logged in
