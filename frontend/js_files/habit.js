@@ -54,16 +54,24 @@ async function addHabit(name, goalType, goalValue) {
 async function updateProgress(progress) {
   try {
     const res = await authFetch(`${API_BASE_URL}/habits/progress`, {
-      method: "POST",
+      method: "PUT",                     // <-- use PUT to match backend
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ progress })
     });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Update progress failed:", res.status, text);
+      alert(`Update failed: ${res.status} ${res.statusText}`);
+      return;
+    }
+
     const data = await res.json();
     alert(data.message || "Progress updated");
     await loadHabits();
   } catch (err) {
-    console.error(err);
-    alert("Failed to update progress");
+    console.error("Network / parse error in updateProgress:", err);
+    alert("Failed to update progress (see console)");
   }
 }
 
