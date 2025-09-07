@@ -1,31 +1,31 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const {
-  addLending,
-  getLendings,
-  markReturned,
-  deleteLending,
-  getOverdueBooks,
-  getDueSoonBooks
-} = require('../controllers/lendingController');
 const auth = require("../middleware/auth");
+const {
+  createLending,
+  getMyLendings,
+  getBorrowed,
+  confirmBorrow,
+  markReturned,
+  deleteLending
+} = require("../controllers/lendingController");
 
-// Add lending
-router.post('/', auth, addLending);
+// Lender creates a lending record
+router.post("/", auth, createLending);
 
-// Get all lendings
-router.get('/', auth, getLendings);
+// Get lendings created by me (lender)
+router.get("/", auth, getMyLendings);
 
-// Mark returned
-router.put('/:id/return', auth, markReturned);
+// Get items where I'm the borrower
+router.get("/borrowed", auth, getBorrowed);
 
-// Delete record
-router.delete('/:id',auth, deleteLending);
+// Borrower confirms a lending (claim)
+router.post("/confirm/:id", auth, confirmBorrow);
 
-// Get overdue books
-router.get('/overdue', auth, getOverdueBooks);
+// Lender marks returned
+router.post("/return/:id", auth, markReturned);
 
-// Get books due soon (next 3 days)
-router.get('/due-soon', auth, getDueSoonBooks);
+// Lender deletes a lending record
+router.delete("/:id", auth, deleteLending);
 
 module.exports = router;
