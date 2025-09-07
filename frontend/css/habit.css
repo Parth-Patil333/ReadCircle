@@ -88,22 +88,22 @@ body {
   color: var(--grey-base);
 }
 
-/* Habit summary styling */
+/* Habit summary styling (light card so it stands out on your light page) */
 .habit-summary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
   padding: 1rem;
-  border-radius: 1rem;
+  border-radius: 12px;
   margin-top: 1rem;
   font-size: 0.95rem;
-  color: #fff;
+  color: var(--grey-shade); /* dark text on light card */
 }
 
 /* Progress bar */
 .progress-bar {
   width: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 0.5rem;
+  background: #f1f1f1;
+  border-radius: 8px;
   height: 12px;
   margin: 0.5rem 0 1rem;
   overflow: hidden;
@@ -111,7 +111,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6610F2, #A684F7);
-  border-radius: 0.5rem;
+  background: linear-gradient(90deg, var(--indigo-base), var(--indigo-tint));
+  border-radius: 8px;
   transition: width 0.4s ease;
 }

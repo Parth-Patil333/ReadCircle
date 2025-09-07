@@ -76,4 +76,16 @@ const updateProgress = async (req, res) => {
   }
 };
 
-module.exports = { setHabit, getHabit, updateProgress };
+// Delete habit for current user (so they can create a fresh one)
+const deleteHabit = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const habit = await Habit.findOneAndDelete({ userId });
+    if (!habit) return res.status(404).json({ message: 'No habit to delete' });
+    res.json({ message: 'Habit deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { setHabit, getHabit, updateProgress, deleteHabit };
