@@ -15,87 +15,103 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  list-style: none;
-  text-decoration: none;
 }
 
 body {
   font-family: var(--font-body);
-  background: var(--grey-tint);
+  background: #f5f7f7;
   color: var(--grey-shade);
+  line-height: 1.5;
   padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
 }
 
-h2 {
+.container {
+  max-width: 800px;
+  margin: auto;
+}
+
+h2, h3 {
   font-family: var(--font-heading);
-  font-size: 1.5rem;
-  color: var(--indigo-shade);
   margin-bottom: 1rem;
+  color: var(--indigo-shade);
 }
 
-/* Card container */
-.card {
+.form-card {
   background: #fff;
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  width: 100%;
-  max-width: 500px;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  margin-bottom: 2rem;
 }
 
-input, select {
-  padding: 0.8rem;
-  border: 1px solid var(--grey-base);
-  border-radius: 0.5rem;
-  font-size: 1rem;
+.form-card input,
+.form-card select {
+  padding: 0.6rem;
+  border: 1px solid var(--grey-tint);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.form-card input:focus,
+.form-card select:focus {
+  border-color: var(--indigo-base);
   outline: none;
 }
 
-input:focus, select:focus {
-  border-color: var(--indigo-base);
-  box-shadow: 0 0 0 2px var(--indigo-tint);
-}
-
-button {
-  padding: 0.8rem 1rem;
+.form-card .btn {
+  grid-column: span 2;
+  padding: 0.7rem;
   background: var(--indigo-base);
   color: #fff;
-  font-weight: bold;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 6px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: background 0.2s;
 }
 
-button:hover {
+.form-card .btn:hover {
   background: var(--indigo-shade);
 }
 
-#bookList {
+.list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
   margin-top: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
 }
 
-#bookList li {
+.list-grid .book-card {
   background: #fff;
   padding: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  font-size: 1rem;
-  color: var(--grey-shade);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.list-grid .book-card h4 {
+  font-family: var(--font-heading);
+  margin-bottom: 0.3rem;
+}
+
+.list-grid .book-card p {
+  font-size: 0.9rem;
+  color: var(--grey-base);
+}
+
+.back-link {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.back-link a {
+  text-decoration: none;
+  color: var(--indigo-base);
+  font-weight: 600;
+}
+
+.back-link a:hover {
+  text-decoration: underline;
 }

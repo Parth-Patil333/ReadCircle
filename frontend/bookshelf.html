@@ -2,32 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Bookshelf Test</title>
-  <link rel="stylesheet" href="../css/test-books.css">
+  <title>Bookshelf - ReadCircle</title>
+  <link rel="stylesheet" href="css/test-books.css">
 </head>
 <body>
+  <div class="container">
+    <h2>My Bookshelf</h2>
 
-  <div class="card">
-    <h2>Add Book</h2>
-    <form id="addBookForm">
-      <input type="text" id="title" placeholder="Book Title" required>
-      <input type="text" id="author" placeholder="Author">
-      <select id="status">
+    <form id="bookForm" class="form-card">
+      <input type="text" id="bookTitle" placeholder="Title" required>
+      <input type="text" id="bookAuthor" placeholder="Author">
+      <select id="bookStatus">
         <option value="To Read">To Read</option>
         <option value="Reading">Reading</option>
         <option value="Finished">Finished</option>
       </select>
-      <button type="submit">Add Book</button>
+      <input type="text" id="bookCondition" placeholder="Condition (optional)">
+      <button type="submit" class="btn">Add Book</button>
     </form>
-  </div>
 
-  <div class="card">
-    <h2>Bookshelf</h2>
-    <button onclick="loadBooks()">Load Books</button>
-    <ul id="bookList"></ul>
+    <h3>My Books</h3>
+    <div id="booksList" class="list-grid"></div>
+
+    <p class="back-link"><a href="dashboard.html">⬅ Back to Dashboard</a></p>
   </div>
 
   <script src="js_files/auth.js"></script>
-  <script src="../js_files/test-books.js"></script>
+  <script src="js_files/test-books.js"></script>
 </body>
 </html>
