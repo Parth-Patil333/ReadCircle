@@ -1,60 +1,55 @@
 // habit.js (protected page)
 const API_BASE_URL = "https://readcircle.onrender.com/api";
 
-// token guard (auth.js must define requireAuth() and getToken())
-const token = requireAuth(); // will redirect to login if no token
+// ✅ token guard (comes from global auth.js)
+requireAuth();
 
-// small helper to always attach Authorization header
-async function authFetch(url, options = {}) {
-  const headers = options.headers || {};
-  headers["Authorization"] = `Bearer ${token}`;
-  options.headers = headers;
-  return fetch(url, options);
-}
-
-// Load habits (plural) — matches this file's internal name
+// Load habit (only one habit per user)
 async function loadHabits() {
   try {
-    const res = await authFetch(`${API_BASE_URL}/habits`, {
-      method: "GET"
-    });
-
-    // If API returns non-JSON on error, this may throw
+    const res = await authFetch(`${API_BASE_URL}/habits`, { method: "GET" });
     const data = await res.json();
 
-    // Render a simple debug view in the page
     const out = document.getElementById("habitInfo");
+
+    if (data?.message === "No habit set" || data?.habit === null) {
+      out.textContent = "No habit set yet. Use Set Goal above.";
+      return;
+    }
+
+    // Show nicely formatted info
     out.textContent = JSON.stringify(data, null, 2);
 
-    console.log("My habits:", data);
+    console.log("My habit:", data);
   } catch (err) {
     console.error(err);
     alert("Failed to load habits");
   }
 }
 
-// Add a new habit (adjust the payload shape to your backend schema)
-async function addHabit(name, goalType, goalValue) {
+// Set or update habit goal
+async function setHabitRequest(goalType, goalValue) {
   try {
     const res = await authFetch(`${API_BASE_URL}/habits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, goalType, goalValue })
+      body: JSON.stringify({ goalType, goalValue })
     });
+
     const data = await res.json();
-    alert(data.message || "Habit added");
+    alert(data.message || "Habit saved");
     await loadHabits();
   } catch (err) {
     console.error(err);
-    alert("Failed to add habit");
+    alert("Failed to set habit");
   }
 }
 
-// Update progress for today's habit (adjust endpoint & payload as needed)
+// Update daily progress
 async function updateProgress(progress) {
   try {
     const res = await authFetch(`${API_BASE_URL}/habits/progress`, {
-      method: "PUT",                     // <-- use PUT to match backend
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ progress })
     });
@@ -84,9 +79,11 @@ if (habitForm) {
     e.preventDefault();
     const goalType = document.getElementById("goalType").value;
     const goalValue = Number(document.getElementById("goalValue").value);
-    // you might want a name for the habit — using goalType as name for demo
-    const name = `${goalValue} ${goalType}`;
-    addHabit(name, goalType, goalValue);
+    if (!goalValue || goalValue <= 0) {
+      alert("Goal value must be a positive number");
+      return;
+    }
+    setHabitRequest(goalType, goalValue);
   });
 }
 
@@ -96,6 +93,10 @@ if (progressForm) {
   progressForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const progress = Number(document.getElementById("progress").value);
+    if (!progress || progress <= 0) {
+      alert("Progress must be a positive number");
+      return;
+    }
     updateProgress(progress);
   });
 }

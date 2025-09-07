@@ -6,6 +6,10 @@ const setHabit = async (req, res) => {
     const { goalType, goalValue } = req.body;
     const userId = req.user.id;
 
+    if (!goalType || !goalValue || goalValue <= 0) {
+      return res.status(400).json({ message: "goalType and positive goalValue required" });
+    }
+
     let habit = await Habit.findOne({ userId });
 
     if (habit) {
@@ -41,6 +45,10 @@ const updateProgress = async (req, res) => {
     const { progress } = req.body;
     const userId = req.user.id;
 
+    if (typeof progress !== "number" || isNaN(progress) || progress <= 0) {
+      return res.status(400).json({ message: "Invalid progress value" });
+    }
+
     let habit = await Habit.findOne({ userId });
     if (!habit) return res.status(404).json({ message: 'No habit set' });
 
@@ -51,7 +59,7 @@ const updateProgress = async (req, res) => {
       // Same day → add to progress
       habit.progress += progress;
     } else {
-      // New day → update streak if yesterday met goal, else reset
+      // New day → check streak
       if (habit.progress >= habit.goalValue) {
         habit.streak += 1;
       } else {
