@@ -5,6 +5,7 @@ const API_BASE_URL = "https://readcircle.onrender.com/api";
 requireAuth();
 
 // Load habit (only one habit per user)
+// Load habit for the logged-in user
 async function loadHabits() {
   try {
     const res = await authFetch(`${API_BASE_URL}/habits`, { method: "GET" });
@@ -12,15 +13,26 @@ async function loadHabits() {
 
     const out = document.getElementById("habitInfo");
 
-    if (data?.message === "No habit set" || data?.habit === null) {
-      out.textContent = "No habit set yet. Use Set Goal above.";
+    if (data?.message === "No habit set") {
+      out.innerHTML = `<p>No habit set yet. Use <strong>Set Goal</strong> above.</p>`;
       return;
     }
 
-    // Show nicely formatted info
-    out.textContent = JSON.stringify(data, null, 2);
+    // Calculate progress percent
+    const percent = Math.min((data.progress / data.goalValue) * 100, 100).toFixed(1);
 
-    console.log("My habit:", data);
+    // Render a nice summary
+    out.innerHTML = `
+      <div class="habit-summary">
+        <p><strong>Goal:</strong> ${data.goalValue} ${data.goalType}</p>
+        <p><strong>Progress today:</strong> ${data.progress} / ${data.goalValue} (${percent}%)</p>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${percent}%;"></div>
+        </div>
+        <p><strong>Streak:</strong> ${data.streak} day${data.streak !== 1 ? "s" : ""}</p>
+        <p><strong>Last Updated:</strong> ${data.lastUpdated ? new Date(data.lastUpdated).toLocaleDateString() : "Never"}</p>
+      </div>
+    `;
   } catch (err) {
     console.error(err);
     alert("Failed to load habits");
