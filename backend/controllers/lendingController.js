@@ -1,8 +1,8 @@
 // controllers/lendingController.js
 const Lending = require("../models/Lending");
-const Notification = require("../models/Notification");
+const Notification = require("../models/Notification"); // optional, only if you use notifications
 
-// Lender creates a lending record (if borrowerId provided will be assigned)
+// Lender creates a lending record (pending or assigned to borrower)
 const createLending = async (req, res) => {
   try {
     const lenderId = req.user.id;
@@ -23,16 +23,16 @@ const createLending = async (req, res) => {
 
     await lending.save();
 
-    // If borrowerId provided, create a notification for the borrower
-    if (borrowerId) {
+    // Optional: create notification if borrowerId present (requires Notification model)
+    if (borrowerId && Notification) {
       const notif = new Notification({
         userId: borrowerId,
         fromUserId: lenderId,
         type: "lending_assigned",
-        message: `${req.user.username || "Someone"} lent you "${bookTitle}". Please return by ${lending.dueDate ? new Date(lending.dueDate).toLocaleDateString() : "the due date"}.`,
+        message: `${req.user.username || "A user"} lent you "${bookTitle}".`,
         data: { lendingId: lending._id }
       });
-      await notif.save();
+      await notif.save().catch(() => {}); // don't fail lending creation if notif fails
     }
 
     res.status(201).json({ message: "Lending created", lending });
@@ -42,8 +42,31 @@ const createLending = async (req, res) => {
   }
 };
 
+// Get lendings created by the logged-in lender
+const getMyLendings = async (req, res) => {
+  try {
+    const lenderId = req.user.id;
+    const docs = await Lending.find({ lenderId }).sort({ createdAt: -1 });
+    res.json(docs);
+  } catch (err) {
+    console.error("getMyLendings error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get items where current user is borrower (confirmed)
+const getBorrowed = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const docs = await Lending.find({ borrowerId: userId }).sort({ dueDate: 1 });
+    res.json(docs);
+  } catch (err) {
+    console.error("getBorrowed error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Borrower confirms a pending lending (claim it)
-// (keeps notification creation minimal because lender already has the record)
 const confirmBorrow = async (req, res) => {
   try {
     const lendingId = req.params.id;
@@ -62,15 +85,17 @@ const confirmBorrow = async (req, res) => {
     lending.status = "confirmed";
     await lending.save();
 
-    // Notify the lender that borrower confirmed
-    const notif = new Notification({
-      userId: lending.lenderId,
-      fromUserId: userId,
-      type: "lending_confirmed",
-      message: `${req.user.username || "A user"} confirmed borrowing "${lending.bookTitle}".`,
-      data: { lendingId: lending._id }
-    });
-    await notif.save();
+    // Optional: notify lender via Notification model if present
+    if (Notification) {
+      const notif = new Notification({
+        userId: lending.lenderId,
+        fromUserId: userId,
+        type: "lending_confirmed",
+        message: `${req.user.username || "A user"} confirmed borrowing "${lending.bookTitle}".`,
+        data: { lendingId: lending._id }
+      });
+      await notif.save().catch(() => {});
+    }
 
     res.json({ message: "Confirmed as borrower", lending });
   } catch (err) {
@@ -79,7 +104,7 @@ const confirmBorrow = async (req, res) => {
   }
 };
 
-// Lender marks item returned -> notify borrower
+// Lender marks item returned
 const markReturned = async (req, res) => {
   try {
     const lendingId = req.params.id;
@@ -92,7 +117,8 @@ const markReturned = async (req, res) => {
     lending.dueDate = null;
     await lending.save();
 
-    if (lending.borrowerId) {
+    // optional notif to borrower
+    if (lending.borrowerId && Notification) {
       const notif = new Notification({
         userId: lending.borrowerId,
         fromUserId: userId,
@@ -100,7 +126,7 @@ const markReturned = async (req, res) => {
         message: `Lender marked "${lending.bookTitle}" as returned.`,
         data: { lendingId: lending._id }
       });
-      await notif.save();
+      await notif.save().catch(() => {});
     }
 
     res.json({ message: "Marked returned", lending });
@@ -110,7 +136,7 @@ const markReturned = async (req, res) => {
   }
 };
 
-// Lender deletes lending -> optionally notify borrower
+// Lender deletes the lending record
 const deleteLending = async (req, res) => {
   try {
     const lendingId = req.params.id;
@@ -119,7 +145,7 @@ const deleteLending = async (req, res) => {
     const deleted = await Lending.findOneAndDelete({ _id: lendingId, lenderId: userId });
     if (!deleted) return res.status(404).json({ message: "Lending not found or not yours" });
 
-    if (deleted.borrowerId) {
+    if (deleted.borrowerId && Notification) {
       const notif = new Notification({
         userId: deleted.borrowerId,
         fromUserId: userId,
@@ -127,7 +153,7 @@ const deleteLending = async (req, res) => {
         message: `Lender deleted the lending record for "${deleted.bookTitle}".`,
         data: { lendingId: deleted._id }
       });
-      await notif.save();
+      await notif.save().catch(() => {});
     }
 
     res.json({ message: "Lending deleted" });
@@ -139,7 +165,8 @@ const deleteLending = async (req, res) => {
 
 module.exports = {
   createLending,
-  // ... other functions (getMyLendings, getBorrowed) unchanged
+  getMyLendings,
+  getBorrowed,
   confirmBorrow,
   markReturned,
   deleteLending
