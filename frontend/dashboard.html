@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>ReadCircle — Dashboard</title>
@@ -7,6 +8,7 @@
   <!-- global helpers (requireAuth, parseJwt, getToken) -->
   <script src="js_files/auth.js"></script>
 </head>
+
 <body>
   <div class="bg"></div>
 
@@ -18,6 +20,18 @@
     <div class="userbox">
       <span id="welcomeName">Reader</span>
       <button id="logoutBtn" class="btn btn-ghost">Logout</button>
+      
+      <div id="notifBell">
+        <button id="notifToggle" class="btn btn-ghost" type="button">
+          🔔 <span id="notifCount">0</span>
+        </button>
+
+        <!-- dropdown container (hidden by default) -->
+        <div id="notifList">
+          <div id="notifItems">Loading...</div>
+        </div>
+      </div>
+
     </div>
   </header>
 
@@ -73,4 +87,5 @@
 
   <script src="js_files/dashboard.js"></script>
 </body>
+
 </html>

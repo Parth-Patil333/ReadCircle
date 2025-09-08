@@ -1,10 +1,28 @@
+// controllers/lendingController.js
 const Lending = require("../models/Lending");
+const Notification = require("../models/Notification");
+const User = require("../models/User"); // optional, used to fetch usernames for messages
+
+// helper: create a notification for a user
+async function createNotification(userId, type, data) {
+  try {
+    await Notification.create({
+      userId,
+      type,
+      data,
+      read: false
+    });
+  } catch (err) {
+    console.error("createNotification error:", err);
+    // don't throw — notification failure shouldn't block primary action
+  }
+}
 
 // Lender creates a lending record (pending or with borrower info)
 const createLending = async (req, res) => {
   try {
     const lenderId = req.user.id;
-    const { bookTitle, bookAuthor, borrowerName, borrowerContact, dueDate } = req.body;
+    const { bookTitle, bookAuthor, borrowerId, borrowerName, borrowerContact, dueDate } = req.body;
 
     if (!bookTitle) return res.status(400).json({ message: "bookTitle required" });
 
@@ -12,13 +30,27 @@ const createLending = async (req, res) => {
       lenderId,
       bookTitle,
       bookAuthor,
+      borrowerId: borrowerId || null,
       borrowerName: borrowerName || "",
       borrowerContact: borrowerContact || "",
       dueDate: dueDate ? new Date(dueDate) : null,
-      status: borrowerName ? "confirmed" : "pending"
+      status: borrowerId ? "confirmed" : "pending"
     });
 
     await lending.save();
+
+    // If lender explicitly assigned a borrower (borrowerId), notify that borrower
+    if (lending.borrowerId) {
+      const msg = `You were assigned "${lending.bookTitle}" by ${req.user.username || "a lender"}. Due: ${lending.dueDate ? new Date(lending.dueDate).toLocaleDateString() : "Not set"}`;
+      createNotification(lending.borrowerId, "lending_assigned", {
+        lendingId: lending._id,
+        lenderId,
+        bookTitle: lending.bookTitle,
+        dueDate: lending.dueDate,
+        message: msg
+      });
+    }
+
     res.status(201).json({ message: "Lending created", lending });
   } catch (err) {
     console.error("createLending:", err);
@@ -60,15 +92,39 @@ const confirmBorrow = async (req, res) => {
       return res.status(400).json({ message: "Lender cannot confirm as borrower" });
     }
     if (lending.status === "confirmed") return res.status(400).json({ message: "Already confirmed" });
+
     // assign borrower
     lending.borrowerId = userId;
-    lending.borrowerName = lending.borrowerName || req.user.username || ""; // optional
+    // keep borrowerName if already set, otherwise try to use req.user.username
+    lending.borrowerName = lending.borrowerName || req.user.username || "";
     // keep dueDate if lender set it; otherwise set a default, e.g., 14 days
     if (!lending.dueDate) lending.dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
     lending.status = "confirmed";
     await lending.save();
+
+    // Notify the lender that someone confirmed their lending
+    const lenderMsg = `${req.user.username || "A user"} has confirmed borrowing "${lending.bookTitle}". Due: ${lending.dueDate ? new Date(lending.dueDate).toLocaleDateString() : "Not set"}`;
+    createNotification(lending.lenderId, "borrower_confirmed", {
+      lendingId: lending._id,
+      borrowerId: lending.borrowerId,
+      bookTitle: lending.bookTitle,
+      dueDate: lending.dueDate,
+      message: lenderMsg
+    });
+
+    // Optionally notify the borrower that confirmation succeeded (useful if you want a copy)
+    const borrowerMsg = `You confirmed borrowing "${lending.bookTitle}". Return by ${lending.dueDate ? new Date(lending.dueDate).toLocaleDateString() : "Not set"}.`;
+    createNotification(lending.borrowerId, "borrow_confirmed", {
+      lendingId: lending._id,
+      lenderId: lending.lenderId,
+      bookTitle: lending.bookTitle,
+      dueDate: lending.dueDate,
+      message: borrowerMsg
+    });
+
     res.json({ message: "Confirmed as borrower", lending });
   } catch (err) {
+    console.error("confirmBorrow:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -85,8 +141,21 @@ const markReturned = async (req, res) => {
     lending.status = "returned";
     lending.dueDate = null;
     await lending.save();
+
+    // Notify borrower that lender marked returned (optional)
+    if (lending.borrowerId) {
+      const msg = `"${lending.bookTitle}" was marked returned by the lender.`;
+      createNotification(lending.borrowerId, "marked_returned", {
+        lendingId: lending._id,
+        lenderId: lending.lenderId,
+        bookTitle: lending.bookTitle,
+        message: msg
+      });
+    }
+
     res.json({ message: "Marked returned", lending });
   } catch (err) {
+    console.error("markReturned:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -99,8 +168,21 @@ const deleteLending = async (req, res) => {
 
     const deleted = await Lending.findOneAndDelete({ _id: lendingId, lenderId: userId });
     if (!deleted) return res.status(404).json({ message: "Lending not found or not yours" });
+
+    // Notify borrower that the lending was deleted (if borrower existed)
+    if (deleted.borrowerId) {
+      const msg = `Lending for "${deleted.bookTitle}" was removed by the lender.`;
+      createNotification(deleted.borrowerId, "lending_deleted", {
+        lendingId: deleted._id,
+        lenderId: deleted.lenderId,
+        bookTitle: deleted.bookTitle,
+        message: msg
+      });
+    }
+
     res.json({ message: "Lending deleted" });
   } catch (err) {
+    console.error("deleteLending:", err);
     res.status(500).json({ error: err.message });
   }
 };
