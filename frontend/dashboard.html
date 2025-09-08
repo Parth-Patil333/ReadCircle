@@ -5,38 +5,46 @@
   <meta charset="UTF-8" />
   <title>ReadCircle — Dashboard</title>
   <link rel="stylesheet" href="css/dashboard.css" />
-  <!-- global helpers (requireAuth, parseJwt, getToken) -->
   <script src="js_files/auth.js"></script>
 </head>
 
 <body>
-  <div class="bg"></div>
-
   <header class="topbar">
     <div class="brand">
       <span class="logo-dot"></span>
       <span class="brand-text">ReadCircle</span>
     </div>
+
     <div class="userbox">
-      <span id="welcomeName">Reader</span>
-      <button id="logoutBtn" class="btn btn-ghost">Logout</button>
-      
-      <div id="notifBell">
-        <button id="notifToggle" class="btn btn-ghost" type="button">
-          🔔 <span id="notifCount">0</span>
+      <!-- Notifications -->
+      <div id="notifWrap" class="notif-wrap">
+        <button id="notifBtn" class="notif-btn" aria-expanded="false" aria-controls="notifDropdown">
+          🔔 <span id="notifBadge" class="notif-badge" hidden>0</span>
         </button>
 
-        <!-- dropdown container (hidden by default) -->
-        <div id="notifList">
-          <div id="notifItems">Loading...</div>
+        <div id="notifDropdown" class="notif-dropdown" hidden>
+          <div class="notif-head">
+            <strong>Notifications</strong>
+            <div class="notif-actions">
+              <button id="markAllReadBtn" class="small">Mark all read</button>
+              <button id="refreshNotifsBtn" class="small">Refresh</button>
+            </div>
+          </div>
+          <ul id="notifList" class="notif-list"></ul>
+          <div class="notif-footer">
+            <a href="notifications.html">View all</a>
+          </div>
         </div>
       </div>
 
+      <!-- User info -->
+      <span id="welcomeName">Reader</span>
+      <button id="logoutBtn" class="btn btn-ghost">Logout</button>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="hero glass">
+    <section class="hero">
       <h2 class="greet">Welcome, <span id="welcomeInline">Reader</span> 👋</h2>
       <p class="sub">Your private reading hub — jump into a section to continue.</p>
       <div class="quick">
@@ -49,31 +57,31 @@
     </section>
 
     <section class="grid">
-      <a class="card glass" href="journal.html">
+      <a class="card" href="journal.html">
         <h3>Journal</h3>
         <p>Capture reflections, tag insights, and review entries by day.</p>
         <span class="cta">Open →</span>
       </a>
 
-      <a class="card glass" href="bookshelf.html">
+      <a class="card" href="bookshelf.html">
         <h3>Bookshelf</h3>
         <p>Track To Read / Reading / Finished. Keep your shelf tidy.</p>
         <span class="cta">Open →</span>
       </a>
 
-      <a class="card glass" href="habits.html">
+      <a class="card" href="habits.html">
         <h3>Habits</h3>
         <p>Build consistent reading streaks and hit your daily goals.</p>
         <span class="cta">Open →</span>
       </a>
 
-      <a class="card glass" href="lending.html">
+      <a class="card" href="lending.html">
         <h3>Lending</h3>
         <p>Separate lender/borrower roles, due dates, and returns.</p>
         <span class="cta">Open →</span>
       </a>
 
-      <a class="card glass" href="listing.html">
+      <a class="card" href="listing.html">
         <h3>Listings</h3>
         <p>Sell or buy books; confirmations and 48-hour cleanup built in.</p>
         <span class="cta">Open →</span>
