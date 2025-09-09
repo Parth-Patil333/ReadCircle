@@ -7,28 +7,36 @@
 </head>
 <body>
   <div class="container">
-    <h2>Lending Tracker</h2>
+    <h2 class="page-title">Lending Tracker</h2>
 
+    <!-- Create lending form (Lender) -->
     <section class="card">
       <h3>Create Lending (Lender)</h3>
-      <form id="createLendForm" class="form-card">
-        <input id="bookTitle" placeholder="Book title" required />
-        <input id="bookAuthor" placeholder="Author (optional)" />
-        <input id="borrowerName" placeholder="Borrower name (optional)" />
-        <input id="borrowerContact" placeholder="Borrower contact (optional)" />
-        <input id="dueDate" type="date" />
-        <button type="submit" class="btn">Create Lending</button>
+      <form id="createLendForm">
+        <div class="form-row">
+          <input id="bookTitle" placeholder="Book title" required />
+          <input id="bookAuthor" placeholder="Author (optional)" />
+          <input id="borrowerId" placeholder="Borrower userId (paste here to assign)" />
+          <input id="dueDate" type="date" />
+          <button type="submit" class="btn">Create Lending</button>
+        </div>
+        <small class="form-tip">
+          Tip: paste a valid borrower userId to automatically assign & notify that user. 
+          If left empty the lending will be 'pending'.
+        </small>
       </form>
     </section>
 
+    <!-- Lender's lendings -->
     <section class="card">
       <h3>My Lendings (I'm the lender)</h3>
-      <div id="myLendingsList"></div>
+      <div id="myLendingsList">Loading...</div>
     </section>
 
+    <!-- Borrowed items for current user -->
     <section class="card">
-      <h3>Items I Borrowed</h3>
-      <div id="borrowedList"></div>
+      <h3>Items I Borrowed (where I'm borrower)</h3>
+      <div id="borrowedList">Loading...</div>
     </section>
   </div>
 
