@@ -2,6 +2,11 @@
 const API_BASE = "https://readcircle.onrender.com/api";
 requireAuth(); // redirect if not logged in
 
+// helper: quick ObjectId guess (24 hex chars)
+function looksLikeObjectId(s) {
+  return typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
+}
+
 // Create lending
 const createForm = document.getElementById("createLendForm");
 createForm.addEventListener("submit", async (e) => {
@@ -9,16 +14,30 @@ createForm.addEventListener("submit", async (e) => {
 
   const bookTitle = document.getElementById("bookTitle").value.trim();
   const bookAuthor = document.getElementById("bookAuthor").value.trim();
-  const borrowerId = document.getElementById("borrowerId").value.trim() || null;
+  const borrowerIdRaw = document.getElementById("borrowerId").value.trim() || null;
   const dueDateVal = document.getElementById("dueDate").value || null;
 
   if (!bookTitle) { alert("Book title required"); return; }
+
+  // Client-side validation: warn if borrowerId looks invalid
+  if (borrowerIdRaw) {
+    const isObjectId = looksLikeObjectId(borrowerIdRaw);
+    const looksLikeEmail = borrowerIdRaw.includes("@");
+    if (!isObjectId && !looksLikeEmail) {
+      // Not a 24-hex id and not an email — ask user to confirm
+      const ok = confirm(
+        "The borrower id you entered does not look like a valid MongoDB ObjectId (24 hex chars) or an email.\n\n" +
+        "If you pasted a username, the server will try to look it up (if enabled). Do you want to submit anyway?"
+      );
+      if (!ok) return;
+    }
+  }
 
   try {
     const payload = {
       bookTitle,
       bookAuthor: bookAuthor || undefined,
-      borrowerId: borrowerId || undefined,
+      borrowerId: borrowerIdRaw || undefined,
       dueDate: dueDateVal || undefined
     };
 
@@ -29,8 +48,11 @@ createForm.addEventListener("submit", async (e) => {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      alert("Failed to create lending: " + text);
+      // try to parse JSON error body for clearer message
+      let text;
+      try { text = await res.text(); text = JSON.parse(text); } catch (err) { /* not JSON */ }
+      const msg = (text && (text.message || text.error)) ? (text.message || text.error) : await res.text();
+      alert("Failed to create lending: " + msg);
       return;
     }
 

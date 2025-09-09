@@ -1,8 +1,10 @@
 // controllers/lendingController.js
+// controllers/lendingController.js (excerpt)
+const mongoose = require("mongoose");
 const Lending = require("../models/Lending");
-const Notification = require("../models/Notification"); // optional, only if you use notifications
+const Notification = require("../models/Notification");
+const User = require("../models/User"); // <- required if you want username -> id lookup
 
-// Lender creates a lending record (pending or assigned to borrower)
 const createLending = async (req, res) => {
   try {
     const lenderId = req.user.id;
@@ -10,37 +12,60 @@ const createLending = async (req, res) => {
 
     if (!bookTitle) return res.status(400).json({ message: "bookTitle required" });
 
+    // Validate borrowerId if provided
+    let finalBorrowerId = null;
+    if (borrowerId) {
+      // If it's already a valid ObjectId string, accept it
+      if (mongoose.isValidObjectId(borrowerId)) {
+        finalBorrowerId = borrowerId;
+      } else {
+        // Optionally try resolving if lender pasted a username/email instead of id
+        // If you don't want this behavior, simply return an error instead of attempting to lookup.
+        const maybeUser = await User.findOne({ username: borrowerId }) || await User.findOne({ email: borrowerId });
+        if (maybeUser) {
+          finalBorrowerId = String(maybeUser._id);
+        } else {
+          return res.status(400).json({ message: "Invalid borrowerId. Provide a valid user _id (24 hex chars) or a username/email that exists." });
+        }
+      }
+    }
+
     const lending = new Lending({
       lenderId,
       bookTitle,
       bookAuthor,
-      borrowerId: borrowerId || null,
+      borrowerId: finalBorrowerId,
       borrowerName: borrowerName || "",
       borrowerContact: borrowerContact || "",
       dueDate: dueDate ? new Date(dueDate) : null,
-      status: borrowerId ? "confirmed" : "pending"
+      status: finalBorrowerId ? "confirmed" : "pending"
     });
 
     await lending.save();
 
-    // Optional: create notification if borrowerId present (requires Notification model)
-    if (borrowerId && Notification) {
+    // create notification only if borrower assigned
+    if (finalBorrowerId) {
       const notif = new Notification({
-        userId: borrowerId,
+        userId: finalBorrowerId,
         fromUserId: lenderId,
         type: "lending_assigned",
         message: `${req.user.username || "A user"} lent you "${bookTitle}".`,
         data: { lendingId: lending._id }
       });
-      await notif.save().catch(() => {}); // don't fail lending creation if notif fails
+      await notif.save().catch(() => {});
     }
 
-    res.status(201).json({ message: "Lending created", lending });
+    return res.status(201).json({ message: "Lending created", lending });
   } catch (err) {
     console.error("createLending error:", err);
-    res.status(500).json({ error: err.message });
+    // Friendly error message for CastError fallback
+    if (err.name === "CastError" && err.kind === "ObjectId") {
+      return res.status(400).json({ message: "Invalid ObjectId provided" });
+    }
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 // Get lendings created by the logged-in lender
 const getMyLendings = async (req, res) => {
