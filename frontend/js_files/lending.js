@@ -1,138 +1,177 @@
+// js_files/lending.js
 const API_BASE = "https://readcircle.onrender.com/api";
-requireAuth(); // ensure token available
+requireAuth(); // redirect if not logged in
 
 // Create lending
-document.getElementById("createLendForm").addEventListener("submit", async (e) => {
+const createForm = document.getElementById("createLendForm");
+createForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const bookTitle = document.getElementById("bookTitle").value.trim();
   const bookAuthor = document.getElementById("bookAuthor").value.trim();
-  const borrowerName = document.getElementById("borrowerName").value.trim();
-  const borrowerContact = document.getElementById("borrowerContact").value.trim();
-  const dueDate = document.getElementById("dueDate").value || null;
+  const borrowerId = document.getElementById("borrowerId").value.trim() || null;
+  const dueDateVal = document.getElementById("dueDate").value || null;
 
   if (!bookTitle) { alert("Book title required"); return; }
 
   try {
+    const payload = {
+      bookTitle,
+      bookAuthor: bookAuthor || undefined,
+      borrowerId: borrowerId || undefined,
+      dueDate: dueDateVal || undefined
+    };
+
     const res = await authFetch(`${API_BASE}/lending`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookTitle, bookAuthor, borrowerName, borrowerContact, dueDate })
+      body: JSON.stringify(payload)
     });
+
+    if (!res.ok) {
+      const text = await res.text();
+      alert("Failed to create lending: " + text);
+      return;
+    }
+
     const data = await res.json();
-    alert(data.message || "Created");
-    e.target.reset();
+    alert(data.message || "Lending created");
+    createForm.reset();
     loadMyLendings();
+    loadBorrowed(); // refresh both panes
   } catch (err) {
-    console.error(err);
-    alert("Failed to create lending");
+    console.error("create lending error:", err);
+    alert("Failed to create lending (see console)");
   }
 });
 
 // Load lendings where I'm lender
 async function loadMyLendings() {
+  const el = document.getElementById("myLendingsList");
+  el.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending`);
+    if (!res.ok) {
+      el.innerText = "Failed to load lendings";
+      return;
+    }
     const arr = await res.json();
-    const el = document.getElementById("myLendingsList");
-    el.innerHTML = "";
     if (!arr.length) { el.innerHTML = "<p>No lendings created.</p>"; return; }
 
+    el.innerHTML = "";
     arr.forEach(item => {
       const card = document.createElement("div");
       card.className = "lend-card";
-      const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned") ? "OVERDUE" : "";
 
-      card.innerHTML = `
-        <h4>${escapeHtml(item.bookTitle)} ${overdue ? '<span class="tag overdue">OVERDUE</span>' : ''}</h4>
-        <p>Author: ${escapeHtml(item.bookAuthor || "Unknown")}</p>
-        <p>Status: <strong>${item.status}</strong></p>
-        <p>Borrower: ${escapeHtml(item.borrowerName || "—")} ${item.borrowerContact ? `(${escapeHtml(item.borrowerContact)})` : ''}</p>
-        <p>Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}</p>
+      const left = document.createElement("div");
+      left.className = "left";
+      const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
+
+      left.innerHTML = `
+        <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
+        <div style="color:#666; font-size:.95rem; margin-top:.25rem;">
+          Author: ${escapeHtml(item.bookAuthor || "Unknown")} • Status: <strong>${escapeHtml(item.status)}</strong>
+          <div>Borrower: ${escapeHtml(item.borrowerName || (item.borrowerId ? item.borrowerId : "—"))}</div>
+          <div>Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}</div>
+        </div>
       `;
 
-      // actions: if pending and not confirmed show "Confirm by borrower" link? lenders can delete or mark returned
-      const btns = document.createElement("div");
-      btns.className = "actions";
+      const right = document.createElement("div");
+      right.className = "right";
 
-      // mark returned (only if not returned)
       if (item.status !== "returned") {
-        const rtn = document.createElement("button");
-        rtn.className = "btn";
-        rtn.textContent = "Mark Returned";
-        rtn.addEventListener("click", () => markReturned(item._id));
-        btns.appendChild(rtn);
+        const markBtn = document.createElement("button");
+        markBtn.className = "btn";
+        markBtn.textContent = "Mark Returned";
+        markBtn.addEventListener("click", () => markReturned(item._id));
+        right.appendChild(markBtn);
       }
 
-      // delete (only lender can delete — this is myLendings so allowed)
-      const del = document.createElement("button");
-      del.className = "btn btn-danger";
-      del.textContent = "Delete";
-      del.addEventListener("click", () => deleteLending(item._id));
-      btns.appendChild(del);
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn btn-ghost";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", () => deleteLending(item._id));
+      right.appendChild(delBtn);
 
-      card.appendChild(btns);
+      card.appendChild(left);
+      card.appendChild(right);
       el.appendChild(card);
     });
   } catch (err) {
-    console.error(err);
-    document.getElementById("myLendingsList").innerText = "Failed to load lendings";
+    console.error("loadMyLendings error:", err);
+    el.innerText = "Failed to load lendings";
   }
 }
 
 // Load items where I'm borrower
 async function loadBorrowed() {
+  const el = document.getElementById("borrowedList");
+  el.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending/borrowed`);
+    if (!res.ok) {
+      el.innerText = "Failed to load borrowed items";
+      return;
+    }
     const arr = await res.json();
-    const el = document.getElementById("borrowedList");
-    el.innerHTML = "";
     if (!arr.length) { el.innerHTML = "<p>No borrowed items.</p>"; return; }
 
+    el.innerHTML = "";
     arr.forEach(item => {
       const card = document.createElement("div");
       card.className = "lend-card";
-      const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned") ? "OVERDUE" : "";
+      const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
 
-      card.innerHTML = `
-        <h4>${escapeHtml(item.bookTitle)} ${overdue ? '<span class="tag overdue">OVERDUE</span>' : ''}</h4>
-        <p>From: (Lender) ${escapeHtml(item.lenderId ? item.lenderId.username || "Lender" : "Lender")}</p>
-        <p>Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}</p>
-        <p>Status: <strong>${item.status}</strong></p>
+      const left = document.createElement("div");
+      left.className = "left";
+      left.innerHTML = `
+        <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
+        <div style="color:#666; font-size:.95rem; margin-top:.25rem;">
+          From: ${escapeHtml(item.lenderId?.username || (item.lenderId || "Lender"))}
+          • Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}
+          • Status: <strong>${escapeHtml(item.status)}</strong>
+        </div>
       `;
 
-      const btns = document.createElement("div");
-      btns.className = "actions";
+      const right = document.createElement("div");
+      right.className = "right";
 
-      // If item is pending (someone created without borrower), borrower can confirm here
+      // If item is pending (status pending) borrower can confirm
       if (item.status === "pending") {
         const conf = document.createElement("button");
         conf.className = "btn";
         conf.textContent = "Confirm Borrow";
         conf.addEventListener("click", () => confirmBorrow(item._id));
-        btns.appendChild(conf);
+        right.appendChild(conf);
       }
 
-      card.appendChild(btns);
+      card.appendChild(left);
+      card.appendChild(right);
       el.appendChild(card);
     });
   } catch (err) {
-    console.error(err);
-    document.getElementById("borrowedList").innerText = "Failed to load borrowed items";
+    console.error("loadBorrowed error:", err);
+    el.innerText = "Failed to load borrowed items";
   }
 }
 
-// Borrower confirms
+// Borrower confirms (if marketplace-style pending items exist)
 async function confirmBorrow(id) {
   if (!confirm("Confirm you want to borrow this book?")) return;
   try {
     const res = await authFetch(`${API_BASE}/lending/confirm/${id}`, { method: "POST" });
+    if (!res.ok) {
+      const text = await res.text();
+      alert("Confirm failed: " + text);
+      return;
+    }
     const d = await res.json();
     alert(d.message || "Confirmed");
     loadMyLendings();
     loadBorrowed();
   } catch (err) {
-    console.error(err);
-    alert("Failed to confirm");
+    console.error("confirmBorrow error:", err);
+    alert("Failed to confirm (see console)");
   }
 }
 
@@ -141,13 +180,18 @@ async function markReturned(id) {
   if (!confirm("Mark this lending as returned?")) return;
   try {
     const res = await authFetch(`${API_BASE}/lending/return/${id}`, { method: "POST" });
+    if (!res.ok) {
+      const text = await res.text();
+      alert("Mark returned failed: " + text);
+      return;
+    }
     const d = await res.json();
     alert(d.message || "Marked returned");
     loadMyLendings();
     loadBorrowed();
   } catch (err) {
-    console.error(err);
-    alert("Failed to mark returned");
+    console.error("markReturned error:", err);
+    alert("Failed to mark returned (see console)");
   }
 }
 
@@ -156,19 +200,24 @@ async function deleteLending(id) {
   if (!confirm("Delete this lending record?")) return;
   try {
     const res = await authFetch(`${API_BASE}/lending/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const text = await res.text();
+      alert("Delete failed: " + text);
+      return;
+    }
     const d = await res.json();
     alert(d.message || "Deleted");
     loadMyLendings();
     loadBorrowed();
   } catch (err) {
-    console.error(err);
-    alert("Failed to delete");
+    console.error("deleteLending error:", err);
+    alert("Failed to delete (see console)");
   }
 }
 
 // tiny escape
 function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-// bootstrap
+// bootstrap loads
 loadMyLendings();
 loadBorrowed();
