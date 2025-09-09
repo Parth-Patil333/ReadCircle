@@ -6,6 +6,93 @@ requireAuth(); // redirect if not logged in
 function looksLikeObjectId(s) {
   return typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
 }
+// ------- user search helper & UI (Debounced) -------
+
+// DOM refs
+const borrowerSearch = document.getElementById("borrowerSearch");
+const borrowerSuggestions = document.getElementById("borrowerSuggestions");
+const borrowerIdInput = document.getElementById("borrowerId");
+
+// debounce helper
+function debounce(fn, wait = 300) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
+
+// render suggestion list
+function renderSuggestions(users) {
+  if (!users || !users.length) {
+    borrowerSuggestions.style.display = "none";
+    borrowerSuggestions.innerHTML = "";
+    return;
+  }
+
+  borrowerSuggestions.innerHTML = "";
+  users.forEach(u => {
+    const item = document.createElement("div");
+    item.style.padding = "8px";
+    item.style.borderBottom = "1px solid #f2f2f2";
+    item.style.cursor = "pointer";
+    item.innerHTML = `<strong>${escapeHtml(u.username)}</strong> <span style="color:#666;font-size:.9rem">(${escapeHtml(u.email || "")})</span>`;
+    item.addEventListener("click", () => {
+      // set selected borrower
+      borrowerSearch.value = `${u.username} (${u.email || u._id})`;
+      borrowerIdInput.value = u._id; // hidden input used in submit
+      borrowerSuggestions.style.display = "none";
+    });
+    borrowerSuggestions.appendChild(item);
+  });
+  borrowerSuggestions.style.display = "block";
+}
+
+// query users API
+async function queryUsers(term) {
+  if (!term || term.length < 2) {
+    renderSuggestions([]);
+    return;
+  }
+  try {
+    const res = await authFetch(`${API_BASE}/users?search=${encodeURIComponent(term)}`);
+    if (!res.ok) return renderSuggestions([]);
+    const users = await res.json();
+    renderSuggestions(users);
+  } catch (err) {
+    console.error("queryUsers error:", err);
+    renderSuggestions([]);
+  }
+}
+
+const debouncedQuery = debounce((val) => queryUsers(val), 300);
+
+// Wire search input
+if (borrowerSearch) {
+  borrowerSearch.addEventListener("input", (e) => {
+    // clear hidden id if user types (so stale selection won't be used)
+    borrowerIdInput.value = "";
+    const val = e.target.value.trim();
+    if (val.length === 0) {
+      renderSuggestions([]);
+      return;
+    }
+    debouncedQuery(val);
+  });
+
+  // hide suggestions on outside click
+  document.addEventListener("click", (ev) => {
+    if (!document.getElementById("borrowerSearch")?.contains(ev.target) && !document.getElementById("borrowerSuggestions")?.contains(ev.target)) {
+      borrowerSuggestions.style.display = "none";
+    }
+  });
+
+  // if user focuses, re-run suggestions for current text
+  borrowerSearch.addEventListener("focus", (e) => {
+    const v = e.target.value.trim();
+    if (v.length >= 2) debouncedQuery(v);
+  });
+}
 
 // Create lending
 const createForm = document.getElementById("createLendForm");
@@ -14,30 +101,37 @@ createForm.addEventListener("submit", async (e) => {
 
   const bookTitle = document.getElementById("bookTitle").value.trim();
   const bookAuthor = document.getElementById("bookAuthor").value.trim();
-  const borrowerIdRaw = document.getElementById("borrowerId").value.trim() || null;
   const dueDateVal = document.getElementById("dueDate").value || null;
 
   if (!bookTitle) { alert("Book title required"); return; }
 
-  // Client-side validation: warn if borrowerId looks invalid
-  if (borrowerIdRaw) {
-    const isObjectId = looksLikeObjectId(borrowerIdRaw);
-    const looksLikeEmail = borrowerIdRaw.includes("@");
-    if (!isObjectId && !looksLikeEmail) {
-      // Not a 24-hex id and not an email — ask user to confirm
-      const ok = confirm(
-        "The borrower id you entered does not look like a valid MongoDB ObjectId (24 hex chars) or an email.\n\n" +
-        "If you pasted a username, the server will try to look it up (if enabled). Do you want to submit anyway?"
-      );
-      if (!ok) return;
-    }
+  // Prefer selected user id from hidden input; fallback to raw search text
+  const borrowerIdSelected = document.getElementById("borrowerId").value.trim() || null;
+  const borrowerSearchRaw = (document.getElementById("borrowerSearch")?.value || "").trim() || null;
+
+  // choose finalBorrowerValue:
+  // - if user explicitly picked a suggestion -> use its _id (best)
+  // - else if borrowerSearchRaw looks like a 24-hex id -> use raw text
+  // - else let server attempt username/email lookup (if you enabled it), but warn user
+  let borrowerIdToSend = null;
+  if (borrowerIdSelected) {
+    borrowerIdToSend = borrowerIdSelected;
+  } else if (looksLikeObjectId(borrowerSearchRaw)) {
+    borrowerIdToSend = borrowerSearchRaw;
+  } else if (borrowerSearchRaw) {
+    // not selected and not an ObjectId — ask user if they want to submit (server may try lookup)
+    const ok = confirm("You didn't select a user from suggestions. If you typed a username or email, the server will try to resolve it. Submit anyway?");
+    if (!ok) return;
+    borrowerIdToSend = borrowerSearchRaw;
+  } else {
+    borrowerIdToSend = undefined;
   }
 
   try {
     const payload = {
       bookTitle,
       bookAuthor: bookAuthor || undefined,
-      borrowerId: borrowerIdRaw || undefined,
+      borrowerId: borrowerIdToSend || undefined,
       dueDate: dueDateVal || undefined
     };
 
@@ -49,9 +143,9 @@ createForm.addEventListener("submit", async (e) => {
 
     if (!res.ok) {
       // try to parse JSON error body for clearer message
-      let text;
-      try { text = await res.text(); text = JSON.parse(text); } catch (err) { /* not JSON */ }
-      const msg = (text && (text.message || text.error)) ? (text.message || text.error) : await res.text();
+      let bodyText = await res.text();
+      try { bodyText = JSON.parse(bodyText); } catch (e) { /* keep string */ }
+      const msg = (bodyText && (bodyText.message || bodyText.error)) ? (bodyText.message || bodyText.error) : bodyText;
       alert("Failed to create lending: " + msg);
       return;
     }
@@ -59,6 +153,10 @@ createForm.addEventListener("submit", async (e) => {
     const data = await res.json();
     alert(data.message || "Lending created");
     createForm.reset();
+    // clear hidden selection too
+    if (document.getElementById("borrowerId")) document.getElementById("borrowerId").value = "";
+    if (document.getElementById("borrowerSearch")) document.getElementById("borrowerSearch").value = "";
+
     loadMyLendings();
     loadBorrowed(); // refresh both panes
   } catch (err) {
@@ -238,7 +336,7 @@ async function deleteLending(id) {
 }
 
 // tiny escape
-function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
 
 // bootstrap loads
 loadMyLendings();

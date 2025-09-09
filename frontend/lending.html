@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>ReadCircle — Lending</title>
   <link rel="stylesheet" href="css/lending.css" />
 </head>
+
 <body>
   <div class="container">
     <h2 class="page-title">Lending Tracker</h2>
@@ -12,19 +14,22 @@
     <!-- Create lending form (Lender) -->
     <section class="card">
       <h3>Create Lending (Lender)</h3>
-      <form id="createLendForm">
-        <div class="form-row">
-          <input id="bookTitle" placeholder="Book title" required />
-          <input id="bookAuthor" placeholder="Author (optional)" />
-          <input id="borrowerId" placeholder="Borrower userId (paste here to assign)" />
-          <input id="dueDate" type="date" />
-          <button type="submit" class="btn">Create Lending</button>
+      <form id="createLendForm" class="form-grid">
+        <input id="bookTitle" placeholder="Book title" required />
+        <input id="bookAuthor" placeholder="Author (optional)" />
+
+        <!-- User search -->
+        <div class="search-wrapper">
+          <input id="borrowerSearch" autocomplete="off" placeholder="Search borrower by name or email" />
+          <input type="hidden" id="borrowerId" />
+          <div id="borrowerSuggestions" class="suggestions"></div>
         </div>
-        <small class="form-tip">
-          Tip: paste a valid borrower userId to automatically assign & notify that user. 
-          If left empty the lending will be 'pending'.
-        </small>
+
+        <input id="dueDate" type="date" />
+        <button type="submit" class="btn">Create Lending</button>
       </form>
+      <small class="tip">💡 Pick a user from suggestions to assign & notify them.  
+        You can still paste a user id if needed.</small>
     </section>
 
     <!-- Lender's lendings -->
@@ -43,4 +48,5 @@
   <script src="js_files/auth.js"></script>
   <script src="js_files/lending.js"></script>
 </body>
+
 </html>

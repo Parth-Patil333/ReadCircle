@@ -28,6 +28,7 @@ app.use('/api/journal', require('./routes/journalRoutes'));
 app.use('/api/habits', require('./routes/habitRoutes'));
 app.use('/api/lending', require('./routes/lendingRoutes'));
 app.use('/api/lending', require('./routes/notificationRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/booklisting', require('./routes/booklistingRoutes'));
 app.use('/api/test', require('./routes/testRoutes')); // optional
 

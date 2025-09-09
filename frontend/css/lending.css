@@ -18,120 +18,102 @@
 
 body {
   font-family: var(--font-body);
-  background: #f7f8fb;
-  color: var(--grey-shade);
-  padding: 1.5rem;
-  line-height: 1.5;
+  background: var(--grey-shade);
+  color: white;
+  min-height: 100vh;
+  padding: 2rem;
 }
 
 .container {
   max-width: 900px;
-  margin: 0 auto;
+  margin: auto;
 }
 
 .page-title {
   font-family: var(--font-heading);
-  font-size: 1.8rem;
-  margin-bottom: 1.2rem;
-  color: var(--indigo-shade);
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  color: var(--indigo-tint);
+  text-align: center;
 }
 
-/* Card */
+/* Card Sections */
 .card {
-  background: #fff;
-  padding: 1.2rem;
+  background: var(--grey-base);
   border-radius: 0.8rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--grey-tint);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .card h3 {
   font-family: var(--font-heading);
-  font-size: 1.2rem;
-  margin-bottom: 0.8rem;
-  color: var(--indigo-base);
+  margin-bottom: 1rem;
+  color: var(--indigo-tint);
 }
 
 /* Form */
-.form-row {
+.form-grid {
   display: flex;
-  gap: 0.6rem;
   flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
-.form-row input,
-.form-row select {
+.form-grid input,
+.form-grid button {
+  flex: 1 1 200px;
   padding: 0.6rem;
+  border-radius: 0.4rem;
   border: 1px solid var(--grey-tint);
-  border-radius: 6px;
-  flex: 1 1 160px;
   font-size: 0.95rem;
 }
 
-.form-tip {
-  display: block;
-  margin-top: 0.6rem;
-  color: var(--grey-base);
-  font-size: 0.85rem;
+/* Search wrapper */
+.search-wrapper {
+  position: relative;
+  flex: 1 1 260px;
+}
+
+.suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border: 1px solid var(--grey-tint);
+  border-radius: 0.4rem;
+  display: none;
+  max-height: 220px;
+  overflow-y: auto;
+  color: black;
+  font-size: 0.9rem;
+}
+
+.suggestions div {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.suggestions div:hover {
+  background: var(--grey-tint);
 }
 
 /* Buttons */
 .btn {
   background: var(--indigo-base);
-  color: #fff;
+  color: white;
   border: none;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.3s;
 }
 
 .btn:hover {
-  background: var(--indigo-shade);
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--grey-tint);
-  color: var(--grey-shade);
-  padding: 0.5rem 0.9rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-ghost:hover {
-  background: var(--grey-tint);
-  color: var(--grey-base);
-}
-
-/* Lending Cards */
-.lend-card {
-  padding: 0.8rem;
-  border: 1px solid var(--grey-tint);
-  border-radius: 8px;
-  margin-bottom: 0.6rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.6rem;
-  background: #fff;
-}
-
-.lend-card .left {
-  flex: 1;
-}
-
-.lend-card .right {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.tag {
   background: var(--indigo-tint);
-  color: #fff;
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
+}
+
+/* Tips */
+.tip {
+  display: block;
+  margin-top: 0.5rem;
   font-size: 0.85rem;
+  color: var(--grey-tint);
 }
