@@ -1,10 +1,10 @@
 // controllers/lendingController.js
-// controllers/lendingController.js (excerpt)
 const mongoose = require("mongoose");
 const Lending = require("../models/Lending");
-const Notification = require("../models/Notification");
-const User = require("../models/User"); // <- required if you want username -> id lookup
+const Notification = require("../models/Notification"); // optional, used if notifications model exists
+const User = require("../models/User"); // optional lookup if you want username/email resolution when creating
 
+// Create lending (lender assigns optional borrowerId)
 const createLending = async (req, res) => {
   try {
     const lenderId = req.user.id;
@@ -12,21 +12,16 @@ const createLending = async (req, res) => {
 
     if (!bookTitle) return res.status(400).json({ message: "bookTitle required" });
 
-    // Validate borrowerId if provided
+    // validate borrowerId if provided
     let finalBorrowerId = null;
     if (borrowerId) {
-      // If it's already a valid ObjectId string, accept it
       if (mongoose.isValidObjectId(borrowerId)) {
         finalBorrowerId = borrowerId;
       } else {
-        // Optionally try resolving if lender pasted a username/email instead of id
-        // If you don't want this behavior, simply return an error instead of attempting to lookup.
+        // try resolving username/email -> _id (optional)
         const maybeUser = await User.findOne({ username: borrowerId }) || await User.findOne({ email: borrowerId });
-        if (maybeUser) {
-          finalBorrowerId = String(maybeUser._id);
-        } else {
-          return res.status(400).json({ message: "Invalid borrowerId. Provide a valid user _id (24 hex chars) or a username/email that exists." });
-        }
+        if (maybeUser) finalBorrowerId = String(maybeUser._id);
+        else return res.status(400).json({ message: "Invalid borrower identifier. Provide a valid user id or an existing username/email." });
       }
     }
 
@@ -43,22 +38,26 @@ const createLending = async (req, res) => {
 
     await lending.save();
 
-    // create notification only if borrower assigned
-    if (finalBorrowerId) {
-      const notif = new Notification({
-        userId: finalBorrowerId,
-        fromUserId: lenderId,
-        type: "lending_assigned",
-        message: `${req.user.username || "A user"} lent you "${bookTitle}".`,
-        data: { lendingId: lending._id }
-      });
-      await notif.save().catch(() => {});
+    // create notification for borrower if assigned (non-blocking)
+    if (finalBorrowerId && Notification) {
+      try {
+        const notif = new Notification({
+          userId: finalBorrowerId,
+          fromUserId: lenderId,
+          type: "lending_assigned",
+          message: `${req.user.username || "A user"} lent you "${bookTitle}".`,
+          data: { lendingId: lending._id }
+        });
+        await notif.save();
+      } catch (err) {
+        // log but don't fail the request
+        console.warn("Notification save failed:", err.message || err);
+      }
     }
 
     return res.status(201).json({ message: "Lending created", lending });
   } catch (err) {
     console.error("createLending error:", err);
-    // Friendly error message for CastError fallback
     if (err.name === "CastError" && err.kind === "ObjectId") {
       return res.status(400).json({ message: "Invalid ObjectId provided" });
     }
@@ -66,12 +65,13 @@ const createLending = async (req, res) => {
   }
 };
 
-
-// Get lendings created by the logged-in lender
+// Get lendings created by logged-in lender (populates borrower info)
 const getMyLendings = async (req, res) => {
   try {
     const lenderId = req.user.id;
-    const docs = await Lending.find({ lenderId }).sort({ createdAt: -1 });
+    const docs = await Lending.find({ lenderId })
+      .populate("borrowerId", "username email") // populate borrower username + email
+      .sort({ createdAt: -1 });
     res.json(docs);
   } catch (err) {
     console.error("getMyLendings error:", err);
@@ -79,11 +79,13 @@ const getMyLendings = async (req, res) => {
   }
 };
 
-// Get items where current user is borrower (confirmed)
+// Get items where current user is borrower (populates lender info)
 const getBorrowed = async (req, res) => {
   try {
     const userId = req.user.id;
-    const docs = await Lending.find({ borrowerId: userId }).sort({ dueDate: 1 });
+    const docs = await Lending.find({ borrowerId: userId })
+      .populate("lenderId", "username email") // populate lender username + email
+      .sort({ dueDate: 1, createdAt: -1 });
     res.json(docs);
   } catch (err) {
     console.error("getBorrowed error:", err);
@@ -91,7 +93,7 @@ const getBorrowed = async (req, res) => {
   }
 };
 
-// Borrower confirms a pending lending (claim it)
+// Borrower confirms a pending lending (claim it) — not used when lender assigns borrower directly
 const confirmBorrow = async (req, res) => {
   try {
     const lendingId = req.params.id;
@@ -110,16 +112,18 @@ const confirmBorrow = async (req, res) => {
     lending.status = "confirmed";
     await lending.save();
 
-    // Optional: notify lender via Notification model if present
+    // notify lender
     if (Notification) {
-      const notif = new Notification({
-        userId: lending.lenderId,
-        fromUserId: userId,
-        type: "lending_confirmed",
-        message: `${req.user.username || "A user"} confirmed borrowing "${lending.bookTitle}".`,
-        data: { lendingId: lending._id }
-      });
-      await notif.save().catch(() => {});
+      try {
+        const notif = new Notification({
+          userId: lending.lenderId,
+          fromUserId: userId,
+          type: "lending_confirmed",
+          message: `${req.user.username || "A user"} confirmed borrowing "${lending.bookTitle}".`,
+          data: { lendingId: lending._id }
+        });
+        await notif.save();
+      } catch (err) { /* ignore */ }
     }
 
     res.json({ message: "Confirmed as borrower", lending });
@@ -142,16 +146,17 @@ const markReturned = async (req, res) => {
     lending.dueDate = null;
     await lending.save();
 
-    // optional notif to borrower
     if (lending.borrowerId && Notification) {
-      const notif = new Notification({
-        userId: lending.borrowerId,
-        fromUserId: userId,
-        type: "lending_returned",
-        message: `Lender marked "${lending.bookTitle}" as returned.`,
-        data: { lendingId: lending._id }
-      });
-      await notif.save().catch(() => {});
+      try {
+        const notif = new Notification({
+          userId: lending.borrowerId,
+          fromUserId: userId,
+          type: "lending_returned",
+          message: `Lender marked "${lending.bookTitle}" as returned.`,
+          data: { lendingId: lending._id }
+        });
+        await notif.save();
+      } catch (err) { /* ignore */ }
     }
 
     res.json({ message: "Marked returned", lending });
@@ -161,7 +166,7 @@ const markReturned = async (req, res) => {
   }
 };
 
-// Lender deletes the lending record
+// Lender deletes lending
 const deleteLending = async (req, res) => {
   try {
     const lendingId = req.params.id;
@@ -171,14 +176,16 @@ const deleteLending = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: "Lending not found or not yours" });
 
     if (deleted.borrowerId && Notification) {
-      const notif = new Notification({
-        userId: deleted.borrowerId,
-        fromUserId: userId,
-        type: "lending_deleted",
-        message: `Lender deleted the lending record for "${deleted.bookTitle}".`,
-        data: { lendingId: deleted._id }
-      });
-      await notif.save().catch(() => {});
+      try {
+        const notif = new Notification({
+          userId: deleted.borrowerId,
+          fromUserId: userId,
+          type: "lending_deleted",
+          message: `Lender deleted the lending record for "${deleted.bookTitle}".`,
+          data: { lendingId: deleted._id }
+        });
+        await notif.save();
+      } catch (err) { /* ignore */ }
     }
 
     res.json({ message: "Lending deleted" });

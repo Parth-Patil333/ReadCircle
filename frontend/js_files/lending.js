@@ -1,20 +1,14 @@
 // js_files/lending.js
 const API_BASE = "https://readcircle.onrender.com/api";
-requireAuth(); // redirect if not logged in
+requireAuth(); // ensure user is logged in (redirects if not)
 
-// helper: quick ObjectId guess (24 hex chars)
+// ---------------- helpers ----------------
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
 function looksLikeObjectId(s) {
   return typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
 }
-
-/* ------- user search helper & UI (Debounced) ------- */
-
-// DOM refs (may be null if HTML doesn't include them)
-const borrowerSearch = document.getElementById("borrowerSearch");
-const borrowerSuggestions = document.getElementById("borrowerSuggestions");
-const borrowerIdInput = document.getElementById("borrowerId");
-
-// debounce helper
 function debounce(fn, wait = 300) {
   let t;
   return (...args) => {
@@ -23,7 +17,12 @@ function debounce(fn, wait = 300) {
   };
 }
 
-// render suggestion list
+// ---------------- user-search UI ----------------
+const borrowerSearch = document.getElementById("borrowerSearch");
+const borrowerSuggestions = document.getElementById("borrowerSuggestions");
+const borrowerIdInput = document.getElementById("borrowerId");
+
+// render suggestions
 function renderSuggestions(users) {
   if (!borrowerSuggestions) return;
   if (!users || !users.length) {
@@ -31,18 +30,14 @@ function renderSuggestions(users) {
     borrowerSuggestions.innerHTML = "";
     return;
   }
-
   borrowerSuggestions.innerHTML = "";
   users.forEach(u => {
     const item = document.createElement("div");
-    item.style.padding = "8px";
-    item.style.borderBottom = "1px solid #f2f2f2";
-    item.style.cursor = "pointer";
-    item.innerHTML = `<strong>${escapeHtml(u.username)}</strong> <span style="color:#666;font-size:.9rem">(${escapeHtml(u.email || "")})</span>`;
+    item.className = "suggestion-item";
+    item.innerHTML = `<strong>${escapeHtml(u.username)}</strong> <span class="muted">(${escapeHtml(u.email || u._id)})</span>`;
     item.addEventListener("click", () => {
-      // set selected borrower
       if (borrowerSearch) borrowerSearch.value = `${u.username} (${u.email || u._id})`;
-      if (borrowerIdInput) borrowerIdInput.value = u._id; // hidden input used in submit
+      if (borrowerIdInput) borrowerIdInput.value = u._id;
       borrowerSuggestions.style.display = "none";
     });
     borrowerSuggestions.appendChild(item);
@@ -50,13 +45,10 @@ function renderSuggestions(users) {
   borrowerSuggestions.style.display = "block";
 }
 
-// query users API
+// query backend users
 async function queryUsers(term) {
   if (!borrowerSuggestions) return;
-  if (!term || term.length < 2) {
-    renderSuggestions([]);
-    return;
-  }
+  if (!term || term.length < 2) return renderSuggestions([]);
   try {
     const res = await authFetch(`${API_BASE}/users?search=${encodeURIComponent(term)}`);
     if (!res.ok) return renderSuggestions([]);
@@ -67,64 +59,50 @@ async function queryUsers(term) {
     renderSuggestions([]);
   }
 }
+const debouncedQuery = debounce(queryUsers, 300);
 
-const debouncedQuery = debounce((val) => queryUsers(val), 300);
-
-// Wire search input if present
 if (borrowerSearch && borrowerSuggestions && borrowerIdInput) {
   borrowerSearch.addEventListener("input", (e) => {
-    // clear hidden id if user types (so stale selection won't be used)
-    borrowerIdInput.value = "";
-    const val = e.target.value.trim();
-    if (val.length === 0) {
-      renderSuggestions([]);
-      return;
-    }
-    debouncedQuery(val);
+    borrowerIdInput.value = ""; // clear selected id when typing
+    const v = e.target.value.trim();
+    if (!v) return renderSuggestions([]);
+    debouncedQuery(v);
   });
 
-  // hide suggestions on outside click
+  borrowerSearch.addEventListener("focus", (e) => {
+    const v = e.target.value.trim();
+    if (v && v.length >= 2) debouncedQuery(v);
+  });
+
   document.addEventListener("click", (ev) => {
-    if (!document.getElementById("borrowerSearch")?.contains(ev.target) && !document.getElementById("borrowerSuggestions")?.contains(ev.target)) {
+    if (!document.getElementById("borrowerSearch")?.contains(ev.target) &&
+        !document.getElementById("borrowerSuggestions")?.contains(ev.target)) {
       borrowerSuggestions.style.display = "none";
     }
   });
-
-  // if user focuses, re-run suggestions for current text
-  borrowerSearch.addEventListener("focus", (e) => {
-    const v = e.target.value.trim();
-    if (v.length >= 2) debouncedQuery(v);
-  });
 }
 
-/* ---------- Create lending (submit handler) ---------- */
-
+// ---------------- create lending (submit) ----------------
 const createForm = document.getElementById("createLendForm");
 if (createForm) {
   createForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const bookTitle = document.getElementById("bookTitle").value.trim();
-    const bookAuthor = document.getElementById("bookAuthor").value.trim();
-    const dueDateVal = document.getElementById("dueDate").value || null;
+    const bookTitle = (document.getElementById("bookTitle")?.value || "").trim();
+    const bookAuthor = (document.getElementById("bookAuthor")?.value || "").trim();
+    const dueDateVal = (document.getElementById("dueDate")?.value || "").trim() || null;
 
     if (!bookTitle) { alert("Book title required"); return; }
 
-    // Prefer selected user id from hidden input; fallback to raw search text
     const borrowerIdSelected = (document.getElementById("borrowerId")?.value || "").trim() || null;
     const borrowerSearchRaw = (document.getElementById("borrowerSearch")?.value || "").trim() || null;
 
-    // choose finalBorrowerValue:
-    // - if user explicitly picked a suggestion -> use its _id (best)
-    // - else if borrowerSearchRaw looks like a 24-hex id -> use raw text
-    // - else let server attempt username/email lookup (if you enabled it), but warn user
-    let borrowerIdToSend = null;
+    let borrowerIdToSend;
     if (borrowerIdSelected) {
       borrowerIdToSend = borrowerIdSelected;
     } else if (looksLikeObjectId(borrowerSearchRaw)) {
       borrowerIdToSend = borrowerSearchRaw;
     } else if (borrowerSearchRaw) {
-      // not selected and not an ObjectId — ask user if they want to submit (server may try lookup)
       const ok = confirm("You didn't select a user from suggestions. If you typed a username or email, the server will try to resolve it. Submit anyway?");
       if (!ok) return;
       borrowerIdToSend = borrowerSearchRaw;
@@ -147,9 +125,8 @@ if (createForm) {
       });
 
       if (!res.ok) {
-        // try to parse JSON error body for clearer message
         let bodyText = await res.text();
-        try { bodyText = JSON.parse(bodyText); } catch (e) { /* keep string */ }
+        try { bodyText = JSON.parse(bodyText); } catch (err) {}
         const msg = (bodyText && (bodyText.message || bodyText.error)) ? (bodyText.message || bodyText.error) : bodyText;
         alert("Failed to create lending: " + msg);
         return;
@@ -158,12 +135,10 @@ if (createForm) {
       const data = await res.json();
       alert(data.message || "Lending created");
       createForm.reset();
-      // clear hidden selection too
       if (document.getElementById("borrowerId")) document.getElementById("borrowerId").value = "";
       if (document.getElementById("borrowerSearch")) document.getElementById("borrowerSearch").value = "";
-
       loadMyLendings();
-      loadBorrowed(); // refresh both panes
+      loadBorrowed();
     } catch (err) {
       console.error("create lending error:", err);
       alert("Failed to create lending (see console)");
@@ -171,19 +146,14 @@ if (createForm) {
   });
 }
 
-/* ---------- Load / Render lendings (existing code) ---------- */
-
-// Load lendings where I'm lender
+// ---------------- load & render lendings ----------------
 async function loadMyLendings() {
   const el = document.getElementById("myLendingsList");
   if (!el) return;
   el.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending`);
-    if (!res.ok) {
-      el.innerText = "Failed to load lendings";
-      return;
-    }
+    if (!res.ok) { el.innerText = "Failed to load lendings"; return; }
     const arr = await res.json();
     if (!arr.length) { el.innerHTML = "<p>No lendings created.</p>"; return; }
 
@@ -196,11 +166,16 @@ async function loadMyLendings() {
       left.className = "left";
       const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
 
+      // Borrower display: prefer populated username -> borrowerName -> id fallback
+      const borrowerDisplayName = item.borrowerId?.username
+        ? `${escapeHtml(item.borrowerId.username)}${item.borrowerId?.email ? ` (${escapeHtml(item.borrowerId.email)})` : ""}`
+        : (item.borrowerName || (item.borrowerId?._id || "—"));
+
       left.innerHTML = `
         <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
-        <div style="color:#666; font-size:.95rem; margin-top:.25rem;">
+        <div class="meta">
           Author: ${escapeHtml(item.bookAuthor || "Unknown")} • Status: <strong>${escapeHtml(item.status)}</strong>
-          <div>Borrower: ${escapeHtml(item.borrowerName || (item.borrowerId ? item.borrowerId : "—"))}</div>
+          <div>Borrower: ${borrowerDisplayName}</div>
           <div>Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}</div>
         </div>
       `;
@@ -232,17 +207,13 @@ async function loadMyLendings() {
   }
 }
 
-// Load items where I'm borrower
 async function loadBorrowed() {
   const el = document.getElementById("borrowedList");
   if (!el) return;
   el.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending/borrowed`);
-    if (!res.ok) {
-      el.innerText = "Failed to load borrowed items";
-      return;
-    }
+    if (!res.ok) { el.innerText = "Failed to load borrowed items"; return; }
     const arr = await res.json();
     if (!arr.length) { el.innerHTML = "<p>No borrowed items.</p>"; return; }
 
@@ -252,12 +223,16 @@ async function loadBorrowed() {
       card.className = "lend-card";
       const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
 
+      const lenderDisplayName = item.lenderId?.username
+        ? `${escapeHtml(item.lenderId.username)}${item.lenderId?.email ? ` (${escapeHtml(item.lenderId.email)})` : ""}`
+        : (item.lenderId?._id || "Lender");
+
       const left = document.createElement("div");
       left.className = "left";
       left.innerHTML = `
         <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
-        <div style="color:#666; font-size:.95rem; margin-top:.25rem;">
-          From: ${escapeHtml(item.lenderId?.username || (item.lenderId || "Lender"))}
+        <div class="meta">
+          From: ${lenderDisplayName}
           • Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}
           • Status: <strong>${escapeHtml(item.status)}</strong>
         </div>
@@ -266,7 +241,6 @@ async function loadBorrowed() {
       const right = document.createElement("div");
       right.className = "right";
 
-      // If item is pending (status pending) borrower can confirm
       if (item.status === "pending") {
         const conf = document.createElement("button");
         conf.className = "btn";
@@ -285,16 +259,12 @@ async function loadBorrowed() {
   }
 }
 
-// Borrower confirms (if marketplace-style pending items exist)
+// ---------------- actions ----------------
 async function confirmBorrow(id) {
   if (!confirm("Confirm you want to borrow this book?")) return;
   try {
     const res = await authFetch(`${API_BASE}/lending/confirm/${id}`, { method: "POST" });
-    if (!res.ok) {
-      const text = await res.text();
-      alert("Confirm failed: " + text);
-      return;
-    }
+    if (!res.ok) { const text = await res.text(); alert("Confirm failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Confirmed");
     loadMyLendings();
@@ -305,16 +275,11 @@ async function confirmBorrow(id) {
   }
 }
 
-// Lender marks returned
 async function markReturned(id) {
   if (!confirm("Mark this lending as returned?")) return;
   try {
     const res = await authFetch(`${API_BASE}/lending/return/${id}`, { method: "POST" });
-    if (!res.ok) {
-      const text = await res.text();
-      alert("Mark returned failed: " + text);
-      return;
-    }
+    if (!res.ok) { const text = await res.text(); alert("Mark returned failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Marked returned");
     loadMyLendings();
@@ -325,16 +290,11 @@ async function markReturned(id) {
   }
 }
 
-// Lender deletes
 async function deleteLending(id) {
   if (!confirm("Delete this lending record?")) return;
   try {
     const res = await authFetch(`${API_BASE}/lending/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const text = await res.text();
-      alert("Delete failed: " + text);
-      return;
-    }
+    if (!res.ok) { const text = await res.text(); alert("Delete failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Deleted");
     loadMyLendings();
@@ -345,9 +305,6 @@ async function deleteLending(id) {
   }
 }
 
-// tiny escape
-function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-// bootstrap loads
+// ---------------- boot ----------------
 loadMyLendings();
 loadBorrowed();
