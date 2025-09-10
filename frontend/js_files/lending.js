@@ -1,28 +1,37 @@
 // js_files/lending.js
 const API_BASE = "https://readcircle.onrender.com/api";
-requireAuth(); // ensure user is logged in (redirects if not)
+requireAuth(); // guard (auth.js must define this and authFetch)
 
-// ---------------- helpers ----------------
+// ---------- small helpers ----------
 function escapeHtml(s) {
-  return String(s || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  return String(s || "").replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 }
 function looksLikeObjectId(s) {
   return typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
 }
 function debounce(fn, wait = 300) {
   let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), wait);
-  };
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
 }
 
-// ---------------- user-search UI ----------------
+// ---------- user search UI (borrower selection) ----------
 const borrowerSearch = document.getElementById("borrowerSearch");
 const borrowerSuggestions = document.getElementById("borrowerSuggestions");
 const borrowerIdInput = document.getElementById("borrowerId");
 
-// render suggestions
+async function queryUsers(term) {
+  if (!term || term.length < 2) return renderSuggestions([]);
+  try {
+    const res = await authFetch(`${API_BASE}/users?search=${encodeURIComponent(term)}`);
+    if (!res.ok) return renderSuggestions([]);
+    const users = await res.json();
+    renderSuggestions(users);
+  } catch (err) {
+    console.error("queryUsers error:", err);
+    renderSuggestions([]);
+  }
+}
+
 function renderSuggestions(users) {
   if (!borrowerSuggestions) return;
   if (!users || !users.length) {
@@ -45,25 +54,11 @@ function renderSuggestions(users) {
   borrowerSuggestions.style.display = "block";
 }
 
-// query backend users
-async function queryUsers(term) {
-  if (!borrowerSuggestions) return;
-  if (!term || term.length < 2) return renderSuggestions([]);
-  try {
-    const res = await authFetch(`${API_BASE}/users?search=${encodeURIComponent(term)}`);
-    if (!res.ok) return renderSuggestions([]);
-    const users = await res.json();
-    renderSuggestions(users);
-  } catch (err) {
-    console.error("queryUsers error:", err);
-    renderSuggestions([]);
-  }
-}
-const debouncedQuery = debounce(queryUsers, 300);
+const debouncedQuery = debounce((v) => queryUsers(v), 300);
 
 if (borrowerSearch && borrowerSuggestions && borrowerIdInput) {
   borrowerSearch.addEventListener("input", (e) => {
-    borrowerIdInput.value = ""; // clear selected id when typing
+    borrowerIdInput.value = ""; // clear previously selected id
     const v = e.target.value.trim();
     if (!v) return renderSuggestions([]);
     debouncedQuery(v);
@@ -82,12 +77,11 @@ if (borrowerSearch && borrowerSuggestions && borrowerIdInput) {
   });
 }
 
-// ---------------- create lending (submit) ----------------
+// ---------- create lending ----------
 const createForm = document.getElementById("createLendForm");
 if (createForm) {
   createForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-
     const bookTitle = (document.getElementById("bookTitle")?.value || "").trim();
     const bookAuthor = (document.getElementById("bookAuthor")?.value || "").trim();
     const dueDateVal = (document.getElementById("dueDate")?.value || "").trim() || null;
@@ -135,8 +129,8 @@ if (createForm) {
       const data = await res.json();
       alert(data.message || "Lending created");
       createForm.reset();
-      if (document.getElementById("borrowerId")) document.getElementById("borrowerId").value = "";
-      if (document.getElementById("borrowerSearch")) document.getElementById("borrowerSearch").value = "";
+      if (borrowerIdInput) borrowerIdInput.value = "";
+      if (borrowerSearch) borrowerSearch.value = "";
       loadMyLendings();
       loadBorrowed();
     } catch (err) {
@@ -146,7 +140,7 @@ if (createForm) {
   });
 }
 
-// ---------------- load & render lendings ----------------
+// ---------- load & render lists ----------
 async function loadMyLendings() {
   const el = document.getElementById("myLendingsList");
   if (!el) return;
@@ -166,8 +160,7 @@ async function loadMyLendings() {
       left.className = "left";
       const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
 
-      // Borrower display: prefer populated username -> borrowerName -> id fallback
-      const borrowerDisplayName = item.borrowerId?.username
+      const borrowerDisplay = item.borrowerId?.username
         ? `${escapeHtml(item.borrowerId.username)}${item.borrowerId?.email ? ` (${escapeHtml(item.borrowerId.email)})` : ""}`
         : (item.borrowerName || (item.borrowerId?._id || "—"));
 
@@ -175,7 +168,7 @@ async function loadMyLendings() {
         <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
         <div class="meta">
           Author: ${escapeHtml(item.bookAuthor || "Unknown")} • Status: <strong>${escapeHtml(item.status)}</strong>
-          <div>Borrower: ${borrowerDisplayName}</div>
+          <div>Borrower: ${borrowerDisplay}</div>
           <div>Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}</div>
         </div>
       `;
@@ -223,7 +216,7 @@ async function loadBorrowed() {
       card.className = "lend-card";
       const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
 
-      const lenderDisplayName = item.lenderId?.username
+      const lenderDisplay = item.lenderId?.username
         ? `${escapeHtml(item.lenderId.username)}${item.lenderId?.email ? ` (${escapeHtml(item.lenderId.email)})` : ""}`
         : (item.lenderId?._id || "Lender");
 
@@ -232,7 +225,7 @@ async function loadBorrowed() {
       left.innerHTML = `
         <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
         <div class="meta">
-          From: ${lenderDisplayName}
+          From: ${lenderDisplay}
           • Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}
           • Status: <strong>${escapeHtml(item.status)}</strong>
         </div>
@@ -240,14 +233,6 @@ async function loadBorrowed() {
 
       const right = document.createElement("div");
       right.className = "right";
-
-      if (item.status === "pending") {
-        const conf = document.createElement("button");
-        conf.className = "btn";
-        conf.textContent = "Confirm Borrow";
-        conf.addEventListener("click", () => confirmBorrow(item._id));
-        right.appendChild(conf);
-      }
 
       card.appendChild(left);
       card.appendChild(right);
@@ -259,22 +244,7 @@ async function loadBorrowed() {
   }
 }
 
-// ---------------- actions ----------------
-async function confirmBorrow(id) {
-  if (!confirm("Confirm you want to borrow this book?")) return;
-  try {
-    const res = await authFetch(`${API_BASE}/lending/confirm/${id}`, { method: "POST" });
-    if (!res.ok) { const text = await res.text(); alert("Confirm failed: " + text); return; }
-    const d = await res.json();
-    alert(d.message || "Confirmed");
-    loadMyLendings();
-    loadBorrowed();
-  } catch (err) {
-    console.error("confirmBorrow error:", err);
-    alert("Failed to confirm (see console)");
-  }
-}
-
+// ---------- actions ----------
 async function markReturned(id) {
   if (!confirm("Mark this lending as returned?")) return;
   try {
@@ -282,8 +252,7 @@ async function markReturned(id) {
     if (!res.ok) { const text = await res.text(); alert("Mark returned failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Marked returned");
-    loadMyLendings();
-    loadBorrowed();
+    loadMyLendings(); loadBorrowed();
   } catch (err) {
     console.error("markReturned error:", err);
     alert("Failed to mark returned (see console)");
@@ -297,14 +266,13 @@ async function deleteLending(id) {
     if (!res.ok) { const text = await res.text(); alert("Delete failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Deleted");
-    loadMyLendings();
-    loadBorrowed();
+    loadMyLendings(); loadBorrowed();
   } catch (err) {
     console.error("deleteLending error:", err);
     alert("Failed to delete (see console)");
   }
 }
 
-// ---------------- boot ----------------
+// ---------- bootstrap ----------
 loadMyLendings();
 loadBorrowed();
