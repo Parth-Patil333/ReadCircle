@@ -1,29 +1,32 @@
+// routes/lendingRoutes.js
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-
-// import controllers properly
 const {
   createLending,
   getMyLendings,
   getBorrowed,
+  confirmBorrow,
   markReturned,
-  deleteLending,
+  deleteLending
 } = require("../controllers/lendingController");
 
-// Create lending (lender adds record)
+// Lender creates a lending record
 router.post("/", auth, createLending);
 
-// Get my lendings (as lender)
+// Get lendings created by me (lender)
 router.get("/", auth, getMyLendings);
 
-// Get borrowed items (as borrower)
+// Get items where I'm the borrower
 router.get("/borrowed", auth, getBorrowed);
 
-// Mark returned (lender only)
+// Borrower confirms a lending (claim)
+router.post("/confirm/:id", auth, confirmBorrow);
+
+// Lender marks returned
 router.post("/return/:id", auth, markReturned);
 
-// Delete lending (lender only)
+// Lender deletes a lending record
 router.delete("/:id", auth, deleteLending);
 
 module.exports = router;
