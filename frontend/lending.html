@@ -1,43 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>ReadCircle — Lending</title>
   <link rel="stylesheet" href="css/lending.css" />
-  <style>
-    /* tiny inline styles so it looks okay without extra CSS */
-    body { font-family: Arial, sans-serif; padding: 1.2rem; background:#f7f8fb; color:#222; }
-    .container{ max-width:900px; margin:0 auto; }
-    .card{ background:#fff; padding:1rem; border-radius:8px; margin-bottom:1rem; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
-    .form-row{ display:flex; gap:.6rem; flex-wrap:wrap; }
-    .form-row input, .form-row select { padding:.5rem; border:1px solid #ddd; border-radius:6px; flex:1 1 160px; }
-    .btn{ background:#00796B; color:#fff; border:none; padding:.5rem .8rem; border-radius:6px; cursor:pointer; }
-    .btn-ghost{ background:transparent; border:1px solid #ddd; color:#333; }
-    .lend-card{ padding:.7rem; border:1px solid #eee; border-radius:8px; margin-bottom:.6rem; display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem; }
-    .lend-card .left{ flex:1; }
-    .lend-card .right{ display:flex; gap:.5rem; align-items:center; }
-    .tag { background:#ffd; padding:.2rem .5rem; border-radius:4px; font-size:.85rem; }
-  </style>
 </head>
+
 <body>
   <div class="container">
-    <h2>Lending Tracker</h2>
+    <h2 class="page-title">Lending Tracker</h2>
 
     <!-- Create lending form (Lender) -->
     <section class="card">
       <h3>Create Lending (Lender)</h3>
+      <form id="createLendForm" class="form-grid">
+        <input id="bookTitle" placeholder="Book title" required />
+        <input id="bookAuthor" placeholder="Author (optional)" />
 
-      <!-- Info: you can paste a borrower's user id in the Borrower ID field -->
-      <form id="createLendForm">
-        <div class="form-row">
-          <input id="bookTitle" placeholder="Book title" required />
-          <input id="bookAuthor" placeholder="Author (optional)" />
-          <input id="borrowerId" placeholder="Borrower userId (paste here to assign)" />
-          <input id="dueDate" type="date" />
-          <button type="submit" class="btn">Create Lending</button>
+        <!-- User search -->
+        <div class="search-wrapper">
+          <input id="borrowerSearch" autocomplete="off" placeholder="Search borrower by name or email" />
+          <input type="hidden" id="borrowerId" />
+          <div id="borrowerSuggestions" class="suggestions"></div>
         </div>
-        <small style="color:#666">Tip: paste a valid borrower userId to automatically assign & notify that user. If left empty the lending will be 'pending'.</small>
+
+        <input id="dueDate" type="date" />
+        <button type="submit" class="btn">Create Lending</button>
       </form>
+      <small class="tip">💡 Pick a user from suggestions to assign & notify them.  
+        You can still paste a user id if needed.</small>
     </section>
 
     <!-- Lender's lendings -->
@@ -56,4 +48,5 @@
   <script src="js_files/auth.js"></script>
   <script src="js_files/lending.js"></script>
 </body>
+
 </html>
