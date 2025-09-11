@@ -2,6 +2,118 @@ const API_BASE = "https://readcircle.onrender.com/api";       // your backend AP
 const SOCKET_URL = "https://readcircle.onrender.com";        // socket server origin
 requireAuth(); // must be defined in auth.js and set up authFetch()
 
+// ---- Robust endpoint helper: tries multiple candidate endpoints until one works ----
+// Usage: await tryEndpoints(['lendings','lending'], '/pathSuffix', opts)
+async function tryEndpoints(candidates, suffix = '', opts = {}) {
+  // candidates: array of base paths to try (e.g. ['lendings','lending'])
+  // suffix: optional path suffix beginning with '/' (e.g. '/borrowed' or '/:id/return')
+  // opts: fetch options (method, headers, body)
+  let lastErr = null;
+  for (const base of candidates) {
+    // build url and replace any '//' accidental double-slash
+    const url = `${API_BASE}/${base}${suffix}`.replace(/([^:]\/)\/+/g, '$1');
+    try {
+      const res = await authFetch(url, opts);
+      // if server returns 404 it means this candidate doesn't exist -> try next
+      if (res.status === 404) {
+        lastErr = res;
+        continue;
+      }
+      // return the response (ok or other non-404 error)
+      return res;
+    } catch (err) {
+      // network error: record and try next candidate
+      lastErr = err;
+      continue;
+    }
+  }
+  // if none matched, throw the last error or a custom one
+  throw lastErr || new Error('All endpoint candidates failed');
+}
+
+// Small wrappers for common resource calls to try plural and singular names
+const ENDPOINT_BASE_CANDIDATES = ['lendings', 'lending']; // order: prefer plural
+
+async function fetchLendings() {
+  const res = await tryEndpoints(ENDPOINT_BASE_CANDIDATES, '', { method: 'GET' });
+  return res;
+}
+
+async function fetchBorrowedEndpoint() {
+  // many backends either provide /lendings/borrowed or don't (so we fall back to /lendings and filter)
+  try {
+    // try /lendings/borrowed or /lending/borrowed
+    const res = await tryEndpoints(ENDPOINT_BASE_CANDIDATES, '/borrowed', { method: 'GET' });
+    return { res, fallback: false };
+  } catch (e) {
+    // fallback: fetch all lendings and filter on client
+    const resAll = await fetchLendings();
+    return { res: resAll, fallback: true };
+  }
+}
+
+async function createLendingRequest(payload) {
+  return tryEndpoints(ENDPOINT_BASE_CANDIDATES, '', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+async function markReturnedRequest(id) {
+  // try PATCH /lendings/:id/return first, else try POST /lending/return/:id, else try /lending/:id/return
+  const candidates = [
+    { suffix: `/${id}/return`, method: 'PATCH' },   // PATCH /lendings/:id/return
+    { suffix: `/return/${id}`, method: 'POST' },   // POST /lending/return/:id
+    { suffix: `/${id}/return`, method: 'POST' }    // POST /lending/:id/return (fallback)
+  ];
+  let lastErr = null;
+  for (const cand of candidates) {
+    try {
+      const res = await tryEndpoints(ENDPOINT_BASE_CANDIDATES, cand.suffix, { method: cand.method });
+      if (res.status === 404) { lastErr = res; continue; }
+      return res;
+    } catch (e) { lastErr = e; continue; }
+  }
+  throw lastErr || new Error('markReturned: all attempts failed');
+}
+
+async function deleteLendingRequest(id) {
+  return tryEndpoints(ENDPOINT_BASE_CANDIDATES, `/${id}`, { method: 'DELETE' });
+}
+
+async function fetchNotificationsRequest() {
+  // some backends expose /lendings/notifications or a top-level /notifications route
+  const notifCandidates = ['lendings/notifications', 'lending/notifications', 'notifications'];
+  for (const cand of notifCandidates) {
+    try {
+      const url = `${API_BASE}/${cand}`.replace(/([^:]\/)\/+/g, '$1');
+      const res = await authFetch(url, { method: 'GET' });
+      if (res.status === 404) continue;
+      return res;
+    } catch (e) { continue; }
+  }
+  // nothing matched
+  throw new Error('No notifications endpoint found');
+}
+
+async function markNotificationReadRequest(id) {
+  const candList = [
+    `/lendings/notifications/${id}/read`,
+    `/lending/notifications/${id}/read`,
+    `/notifications/${id}/read`
+  ];
+  for (const p of candList) {
+    try {
+      const url = `${API_BASE}${p}`.replace(/([^:]\/)\/+/g, '$1');
+      const res = await authFetch(url, { method: 'PATCH' });
+      if (res.status === 404) continue;
+      return res;
+    } catch (e) { continue; }
+  }
+  throw new Error('Mark-notification-read endpoint not found');
+}
+
 // ---------- token helper ----------
 function getTokenForSocket() {
   // prefer authGetToken if your auth.js exposes it; otherwise fallback to localStorage
@@ -166,6 +278,7 @@ if (createForm) {
 }
 
 // ---------- load & render lists ----------
+// ---------- load & render lists ----------
 async function loadMyLendings() {
   if (!myLendingsEl) return;
   myLendingsEl.innerHTML = "Loading...";
@@ -228,9 +341,51 @@ async function loadBorrowed() {
   if (!borrowedEl) return;
   borrowedEl.innerHTML = "Loading...";
   try {
-    const res = await authFetch(`${API_BASE}/lendings/borrowed`);
-    if (!res.ok) { borrowedEl.innerText = "Failed to load borrowed items"; return; }
-    const arr = await res.json();
+    // try server-provided /lendings/borrowed first
+    let res = await authFetch(`${API_BASE}/lendings/borrowed`);
+    let arr;
+    if (res.status === 404) {
+      // fallback: fetch all lendings and filter client-side for current user as borrower
+      res = await authFetch(`${API_BASE}/lendings`);
+      if (!res.ok) { borrowedEl.innerText = "Failed to load borrowed items"; return; }
+      arr = await res.json();
+
+      // determine current user id (try authGetUser() helper if you have it)
+      let currentUserId = null;
+      try {
+        if (typeof authGetUser === 'function') {
+          const u = authGetUser();
+          currentUserId = u?._id || u?.id || null;
+        }
+      } catch (e) { /* ignore */ }
+
+      // fallback: decode JWT from localStorage if available
+      if (!currentUserId) {
+        try {
+          const tokenRaw = (localStorage.getItem('token') || '').replace(/^Bearer\s+/i, '');
+          if (tokenRaw) {
+            const payload = JSON.parse(atob(tokenRaw.split('.')[1]));
+            currentUserId = payload.id || payload._id || null;
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      if (currentUserId) {
+        arr = arr.filter(l => {
+          const bid = l.borrower?._id || l.borrowerId || l.borrower;
+          return String(bid) === String(currentUserId);
+        });
+      } else {
+        // if we couldn't determine user id, show none and log a note
+        console.warn('Could not determine current user id for client-side borrowed filtering');
+        arr = [];
+      }
+    } else {
+      // success on /lendings/borrowed
+      if (!res.ok) { borrowedEl.innerText = "Failed to load borrowed items"; return; }
+      arr = await res.json();
+    }
+
     if (!arr.length) { borrowedEl.innerHTML = "<p>No borrowed items.</p>"; return; }
 
     borrowedEl.innerHTML = "";
@@ -271,8 +426,22 @@ async function loadBorrowed() {
 async function markReturned(id) {
   if (!confirm("Mark this lending as returned?")) return;
   try {
-    const res = await authFetch(`${API_BASE}/lendings/return/${id}`, { method: "POST" });
-    if (!res.ok) { const text = await res.text(); alert("Mark returned failed: " + text); return; }
+    // prefer PATCH /lendings/:id/return
+    const res = await authFetch(`${API_BASE}/lendings/${id}/return`, { method: "PATCH" });
+    if (!res.ok) {
+      // try legacy POST /lendings/return/:id as fallback
+      if (res.status === 404) {
+        const res2 = await authFetch(`${API_BASE}/lendings/return/${id}`, { method: "POST" });
+        if (!res2.ok) { const text = await res2.text(); alert("Mark returned failed: " + text); return; }
+        const d2 = await res2.json();
+        alert(d2.message || "Marked returned");
+        await loadMyLendings(); await loadBorrowed();
+        return;
+      }
+      const text = await res.text();
+      alert("Mark returned failed: " + text);
+      return;
+    }
     const d = await res.json();
     alert(d.message || "Marked returned");
     await loadMyLendings(); await loadBorrowed();
@@ -299,7 +468,11 @@ async function deleteLending(id) {
 // ---------- notifications: UI + API + socket ----------
 async function fetchNotifications() {
   try {
-    const res = await authFetch(`${API_BASE}/lendings/notifications`);
+    // try /lendings/notifications then /notifications
+    let res = await authFetch(`${API_BASE}/lendings/notifications`);
+    if (res.status === 404) {
+      res = await authFetch(`${API_BASE}/notifications`);
+    }
     if (!res.ok) return;
     const data = await res.json();
     notifications = data.notifications || [];
@@ -331,8 +504,13 @@ function renderNotifications() {
 // mark a notif as read server-side
 async function markNotificationRead(id) {
   try {
-    const url = `${API_BASE}/lendings/notifications/${id}/read`;
-    const res = await authFetch(url, { method: 'PATCH' });
+    // try lendings route first, then top-level notifications route
+    let url = `${API_BASE}/lendings/notifications/${id}/read`;
+    let res = await authFetch(url, { method: 'PATCH' });
+    if (res.status === 404) {
+      url = `${API_BASE}/notifications/${id}/read`;
+      res = await authFetch(url, { method: 'PATCH' });
+    }
     if (!res.ok) return;
     const { notification } = await res.json();
     notifications = notifications.map(n => n._id === id ? { ...n, read: true } : n);
@@ -346,12 +524,10 @@ async function markAllRead() {
   const unread = notifications.filter(n => !n.read).map(n => n._id);
   for (const id of unread) {
     // sequential to avoid rate issues; can switch to Promise.all if desired
-    // small delay could be added if API rate-limits
     // eslint-disable-next-line no-await-in-loop
     await markNotificationRead(id);
   }
 }
-
 // notif click handlers (delegation)
 if (notifList) {
   notifList.addEventListener('click', (e) => {
