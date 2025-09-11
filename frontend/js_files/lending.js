@@ -1,15 +1,18 @@
-const API_BASE = "https://readcircle.onrender.com/api";       // your backend API base
-const SOCKET_URL = "https://readcircle.onrender.com";        // socket server origin
+// js_files/lending.js — PART 1 of 6
+// ------------------------------
+// 1) constants and auth guard
+const API_BASE = "https://readcircle.onrender.com/api";
+const SOCKET_URL = "https://readcircle.onrender.com";
 requireAuth(); // must be defined in auth.js and set up authFetch()
 
-// ---------- helper to resolve current user ----------
+// 2) helper to resolve current user id (tries authGetUser(), else decodes JWT)
 function resolveCurrentUserId() {
   try {
     if (typeof authGetUser === 'function') {
       const u = authGetUser();
       return u?._id || u?.id || null;
     }
-  } catch (e) { }
+  } catch (e) { /* ignore */ }
   try {
     const tokenRaw = (localStorage.getItem('token') || '').replace(/^Bearer\s+/i, '');
     if (!tokenRaw) return null;
@@ -19,131 +22,42 @@ function resolveCurrentUserId() {
     return null;
   }
 }
-// ---- Robust endpoint helper: tries multiple candidate endpoints until one works ----
-// Usage: await tryEndpoints(['lendings','lending'], '/pathSuffix', opts)
+
+// 3) OPTIONAL robust endpoint helpers (keep if you want fallbacks)
+// You can remove these if you prefer direct endpoints. I keep them for resilience.
 async function tryEndpoints(candidates, suffix = '', opts = {}) {
-  // candidates: array of base paths to try (e.g. ['lendings','lending'])
-  // suffix: optional path suffix beginning with '/' (e.g. '/borrowed' or '/:id/return')
-  // opts: fetch options (method, headers, body)
   let lastErr = null;
   for (const base of candidates) {
-    // build url and replace any '//' accidental double-slash
     const url = `${API_BASE}/${base}${suffix}`.replace(/([^:]\/)\/+/g, '$1');
     try {
       const res = await authFetch(url, opts);
-      // if server returns 404 it means this candidate doesn't exist -> try next
-      if (res.status === 404) {
-        lastErr = res;
-        continue;
-      }
-      // return the response (ok or other non-404 error)
+      if (res.status === 404) { lastErr = res; continue; }
       return res;
     } catch (err) {
-      // network error: record and try next candidate
       lastErr = err;
       continue;
     }
   }
-  // if none matched, throw the last error or a custom one
   throw lastErr || new Error('All endpoint candidates failed');
 }
-
-// Small wrappers for common resource calls to try plural and singular names
-const ENDPOINT_BASE_CANDIDATES = ['lendings', 'lending']; // order: prefer plural
+const ENDPOINT_BASE_CANDIDATES = ['lendings', 'lending']; // prefer plural first
 
 async function fetchLendings() {
-  const res = await tryEndpoints(ENDPOINT_BASE_CANDIDATES, '', { method: 'GET' });
-  return res;
+  return tryEndpoints(ENDPOINT_BASE_CANDIDATES, '', { method: 'GET' });
 }
 
-async function fetchBorrowedEndpoint() {
-  // many backends either provide /lendings/borrowed or don't (so we fall back to /lendings and filter)
-  try {
-    // try /lendings/borrowed or /lending/borrowed
-    const res = await tryEndpoints(ENDPOINT_BASE_CANDIDATES, '/borrowed', { method: 'GET' });
-    return { res, fallback: false };
-  } catch (e) {
-    // fallback: fetch all lendings and filter on client
-    const resAll = await fetchLendings();
-    return { res: resAll, fallback: true };
-  }
-}
-
-async function createLendingRequest(payload) {
-  return tryEndpoints(ENDPOINT_BASE_CANDIDATES, '', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-}
-
-async function markReturnedRequest(id) {
-  // try PATCH /lendings/:id/return first, else try POST /lending/return/:id, else try /lending/:id/return
-  const candidates = [
-    { suffix: `/${id}/return`, method: 'PATCH' },   // PATCH /lendings/:id/return
-    { suffix: `/return/${id}`, method: 'POST' },   // POST /lending/return/:id
-    { suffix: `/${id}/return`, method: 'POST' }    // POST /lending/:id/return (fallback)
-  ];
-  let lastErr = null;
-  for (const cand of candidates) {
-    try {
-      const res = await tryEndpoints(ENDPOINT_BASE_CANDIDATES, cand.suffix, { method: cand.method });
-      if (res.status === 404) { lastErr = res; continue; }
-      return res;
-    } catch (e) { lastErr = e; continue; }
-  }
-  throw lastErr || new Error('markReturned: all attempts failed');
-}
-
-async function deleteLendingRequest(id) {
-  return tryEndpoints(ENDPOINT_BASE_CANDIDATES, `/${id}`, { method: 'DELETE' });
-}
-
-async function fetchNotificationsRequest() {
-  // some backends expose /lendings/notifications or a top-level /notifications route
-  const notifCandidates = ['lendings/notifications', 'lending/notifications', 'notifications'];
-  for (const cand of notifCandidates) {
-    try {
-      const url = `${API_BASE}/${cand}`.replace(/([^:]\/)\/+/g, '$1');
-      const res = await authFetch(url, { method: 'GET' });
-      if (res.status === 404) continue;
-      return res;
-    } catch (e) { continue; }
-  }
-  // nothing matched
-  throw new Error('No notifications endpoint found');
-}
-
-async function markNotificationReadRequest(id) {
-  const candList = [
-    `/lendings/notifications/${id}/read`,
-    `/lending/notifications/${id}/read`,
-    `/notifications/${id}/read`
-  ];
-  for (const p of candList) {
-    try {
-      const url = `${API_BASE}${p}`.replace(/([^:]\/)\/+/g, '$1');
-      const res = await authFetch(url, { method: 'PATCH' });
-      if (res.status === 404) continue;
-      return res;
-    } catch (e) { continue; }
-  }
-  throw new Error('Mark-notification-read endpoint not found');
-}
-
-// ---------- token helper ----------
+// 4) token helper for socket
 function getTokenForSocket() {
-  // prefer authGetToken if your auth.js exposes it; otherwise fallback to localStorage
   try {
     if (typeof authGetToken === 'function') {
       const t = authGetToken();
       return t ? (t.startsWith('Bearer ') ? t : `Bearer ${t}`) : null;
     }
-  } catch (e) { }
-  return localStorage.getItem('token') || null; // may be "Bearer <token>" or raw
+  } catch (e) { /* ignore */ }
+  return localStorage.getItem('token') || null;
 }
 
-// ---------- small helpers ----------
+// 5) small UI helpers
 function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
@@ -158,7 +72,7 @@ function timeAgoOrLocal(dateStr) {
   try { return new Date(dateStr).toLocaleString(); } catch (e) { return dateStr; }
 }
 
-// ---------- DOM refs ----------
+// 6) DOM refs
 const borrowerSearch = document.getElementById("borrowerSearch");
 const borrowerSuggestions = document.getElementById("borrowerSuggestions");
 const borrowerIdInput = document.getElementById("borrowerId");
@@ -166,24 +80,28 @@ const createForm = document.getElementById("createLendForm");
 const myLendingsEl = document.getElementById("myLendingsList");
 const borrowedEl = document.getElementById("borrowedList");
 
-// notification UI refs
+// notification UI refs (will be used in later parts)
 const notifBtn = document.getElementById('notifBtn');
 const notifDropdown = document.getElementById('notifDropdown');
 const notifList = document.getElementById('notifList');
 const notifCountElm = document.getElementById('notifCount');
 const markAllReadBtn = document.getElementById('markAllReadBtn');
 
+// store runtime state
 let notifications = [];
 let socket = null;
 
-// ---------- user search (borrower selection) ----------
+// 7) borrower search logic (user suggestion dropdown)
 async function queryUsers(term) {
   if (!term || term.length < 2) return renderSuggestions([]);
   try {
+    // prefer your /api/users?search= endpoint
     const res = await authFetch(`${API_BASE}/users?search=${encodeURIComponent(term)}`);
     if (!res.ok) return renderSuggestions([]);
     const users = await res.json();
-    renderSuggestions(users);
+    // some APIs return { users: [...] }
+    const arr = Array.isArray(users) ? users : (Array.isArray(users.users) ? users.users : (Array.isArray(users.data) ? users.data : []));
+    renderSuggestions(arr);
   } catch (err) {
     console.error("queryUsers error:", err);
     renderSuggestions([]);
@@ -200,9 +118,9 @@ function renderSuggestions(users) {
   users.forEach(u => {
     const item = document.createElement("div");
     item.className = "suggestion-item";
-    item.innerHTML = `<strong>${escapeHtml(u.username)}</strong> <span class="muted">(${escapeHtml(u.email || u._id)})</span>`;
+    item.innerHTML = `<strong>${escapeHtml(u.username || u.name || u._id)}</strong> <span class="muted">(${escapeHtml(u.email || u._id || '')})</span>`;
     item.addEventListener("click", () => {
-      borrowerSearch.value = `${u.username} (${u.email || u._id})`;
+      borrowerSearch.value = `${u.username || u.name} (${u.email || u._id})`;
       borrowerIdInput.value = u._id;
       borrowerSuggestions.style.display = "none";
     });
@@ -232,18 +150,51 @@ if (borrowerSearch && borrowerSuggestions && borrowerIdInput) {
   });
 }
 
-// ---------- create lending ----------
+// End of PART 1
+// js_files/lending.js — PART 2 of 6
+// ------------------------------
+// CREATE LENDING: request wrapper + form submit handler
+
+// createLendingRequest: prefer singular /api/lending, fallback to /api/lendings
+async function createLendingRequest(payload) {
+  // try singular (your backend mounts router at /api/lending)
+  let res = await authFetch(`${API_BASE}/lending`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (res.status === 404) {
+    // fallback to plural if singular not found
+    try {
+      res = await authFetch(`${API_BASE}/lendings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      // keep original res if fallback fails
+    }
+  }
+  return res;
+}
+
+// Attach create form handler (uses createLendingRequest)
 if (createForm) {
-  createForm.addEventListener("submit", async (e) => {
+  createForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const bookTitle = (document.getElementById("bookTitle")?.value || "").trim();
-    const bookAuthor = (document.getElementById("bookAuthor")?.value || "").trim();
-    const dueDateVal = (document.getElementById("dueDate")?.value || "").trim() || null;
 
-    if (!bookTitle) { alert("Book title required"); return; }
+    const bookTitle = (document.getElementById('bookTitle')?.value || '').trim();
+    const bookAuthor = (document.getElementById('bookAuthor')?.value || '').trim();
+    const dueDateVal = (document.getElementById('dueDate')?.value || '').trim() || null;
 
-    const borrowerIdSelected = (document.getElementById("borrowerId")?.value || "").trim() || null;
-    const borrowerSearchRaw = (document.getElementById("borrowerSearch")?.value || "").trim() || null;
+    if (!bookTitle) {
+      alert('Book title required');
+      return;
+    }
+
+    const borrowerIdSelected = (document.getElementById('borrowerId')?.value || '').trim() || null;
+    const borrowerSearchRaw = (document.getElementById('borrowerSearch')?.value || '').trim() || null;
 
     let borrowerIdToSend;
     if (borrowerIdSelected) {
@@ -258,102 +209,185 @@ if (createForm) {
       borrowerIdToSend = undefined;
     }
 
+    const payload = {
+      bookTitle,
+      bookAuthor: bookAuthor || undefined,
+      borrowerId: borrowerIdToSend || undefined,
+      dueDate: dueDateVal || undefined
+    };
+
     try {
-      const payload = {
-        bookTitle,
-        bookAuthor: bookAuthor || undefined,
-        borrowerId: borrowerIdToSend || undefined,
-        dueDate: dueDateVal || undefined
-      };
+      const res = await createLendingRequest(payload);
 
-      const res = await authFetch(`${API_BASE}/lendings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        let bodyText = await res.text();
-        try { bodyText = JSON.parse(bodyText); } catch (err) { }
-        const msg = (bodyText && (bodyText.message || bodyText.error)) ? (bodyText.message || bodyText.error) : bodyText;
-        alert("Failed to create lending: " + msg);
+      if (!res) {
+        alert('Failed to create lending: no response from server');
         return;
       }
 
-      const data = await res.json();
-      alert(data.message || "Lending created");
+      // If server returns HTML error page it will not be JSON — handle gracefully
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok) {
+        let bodyText;
+        try {
+          bodyText = await res.text();
+        } catch (e) {
+          bodyText = String(e);
+        }
+        // show meaningful part if it's JSON, else show truncated text
+        if (contentType.includes('application/json')) {
+          try {
+            const json = JSON.parse(bodyText);
+            alert('Failed to create lending: ' + (json.message || JSON.stringify(json)));
+          } catch (e) {
+            alert('Failed to create lending');
+          }
+        } else {
+          // likely HTML error page — show brief snippet
+          alert('Failed to create lending: ' + (bodyText ? bodyText.slice(0, 300) : `status ${res.status}`));
+        }
+        return;
+      }
+
+      // success — parse JSON if possible
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        // server returned non-JSON success (unexpected) — still proceed
+        data = {};
+      }
+
+      alert(data.message || 'Lending created');
+
       createForm.reset();
-      borrowerIdInput.value = "";
-      borrowerSearch.value = "";
+      if (borrowerIdInput) borrowerIdInput.value = '';
+      if (borrowerSearch) borrowerSearch.value = '';
+
+      // refresh lists
       await loadMyLendings();
       await loadBorrowed();
     } catch (err) {
-      console.error("create lending error:", err);
-      alert("Failed to create lending (see console)");
+      console.error('create lending error:', err);
+      alert('Failed to create lending (see console)');
     }
   });
 }
 
-// ---------- load & render lists ----------
+// End of PART 2
+// js_files/lending.js — PART 3 of 6
+// ------------------------------
+// LISTING + RENDERING: loadMyLendings() and loadBorrowed()
+
+// Helper: normalize server response into an array of lendings
+function normalizeLendingsResponse(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.lendings)) return payload.lendings;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.items)) return payload.items;
+  // try to find the first array value
+  const firstArr = Object.values(payload).find(v => Array.isArray(v));
+  if (Array.isArray(firstArr)) return firstArr;
+  return [];
+}
+
+// Renders a single lending item card for lender list
+function renderLendingCardForLender(item) {
+  const card = document.createElement("div");
+  card.className = "lend-card";
+
+  const left = document.createElement("div");
+  left.className = "left";
+  const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
+
+  const borrowerObj = item.borrower || item.borrowerId || null;
+  const borrowerDisplay = borrowerObj?.username
+    ? `${escapeHtml(borrowerObj.username)}${borrowerObj?.email ? ` (${escapeHtml(borrowerObj.email)})` : ""}`
+    : (item.borrowerName || (borrowerObj?._id || borrowerObj || "—"));
+
+  left.innerHTML = `
+    <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
+    <div class="meta">
+      Author: ${escapeHtml(item.bookAuthor || "Unknown")} • Status: <strong>${escapeHtml(item.status || 'lent')}</strong>
+      <div>Borrower: ${borrowerDisplay}</div>
+      <div>Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}</div>
+    </div>
+  `;
+
+  const right = document.createElement("div");
+  right.className = "right";
+
+  if (item.status !== "returned") {
+    const markBtn = document.createElement("button");
+    markBtn.className = "btn";
+    markBtn.textContent = "Mark Returned";
+    markBtn.addEventListener("click", () => markReturned(item._id || item.id));
+    right.appendChild(markBtn);
+  }
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "btn btn-ghost";
+  delBtn.textContent = "Delete";
+  delBtn.addEventListener("click", () => deleteLending(item._id || item.id));
+  right.appendChild(delBtn);
+
+  card.appendChild(left);
+  card.appendChild(right);
+  return card;
+}
+
+// Renders a single lending item card for borrowed list
+function renderBorrowedCard(item) {
+  const card = document.createElement("div");
+  card.className = "lend-card";
+
+  const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
+
+  const lenderObj = item.lender || item.lenderId || null;
+  const lenderDisplay = lenderObj?.username
+    ? `${escapeHtml(lenderObj.username)}${lenderObj?.email ? ` (${escapeHtml(lenderObj.email)})` : ""}`
+    : (lenderObj?._id || "Lender");
+
+  const left = document.createElement("div");
+  left.className = "left";
+  left.innerHTML = `
+    <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
+    <div class="meta">
+      From: ${lenderDisplay}
+      • Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}
+      • Status: <strong>${escapeHtml(item.status || 'lent')}</strong>
+    </div>
+  `;
+
+  const right = document.createElement("div");
+  right.className = "right";
+
+  card.appendChild(left);
+  card.appendChild(right);
+  return card;
+}
+
+// loadMyLendings: fetch lendings and show those where current user is lender
 async function loadMyLendings() {
   if (!myLendingsEl) return;
   myLendingsEl.innerHTML = "Loading...";
   try {
-    // GET /api/lending  (router mounted at /api/lending)
+    // Your backend router is mounted at /api/lending (singular)
     const res = await authFetch(`${API_BASE}/lending`);
     if (!res.ok) { myLendingsEl.innerText = "Failed to load lendings"; return; }
-    const arr = await res.json();
-    if (!arr.length) { myLendingsEl.innerHTML = "<p>No lendings created.</p>"; return; }
+    const payload = await res.json();
+    const all = normalizeLendingsResponse(payload);
 
-    myLendingsEl.innerHTML = "";
-    // server returns lendings where user may be lender or borrower;
-    // show items where current user is lender
     const currentUserId = resolveCurrentUserId();
-    const myLendings = arr.filter(l => String(l.lender || l.lenderId || l.lender?._id) === String(currentUserId));
+    const myLendings = currentUserId
+      ? all.filter(l => String(l.lender || l.lenderId || l.lender?._id) === String(currentUserId))
+      : all.filter(l => l.isLentByCurrentUser); // fallback if server marks it
 
     if (!myLendings.length) { myLendingsEl.innerHTML = "<p>No lendings created.</p>"; return; }
 
+    myLendingsEl.innerHTML = "";
     myLendings.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "lend-card";
-
-      const left = document.createElement("div");
-      left.className = "left";
-      const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
-
-      const borrowerObj = item.borrower || item.borrowerId || item.borrowerId?._id ? item.borrower || item.borrowerId : null;
-      const borrowerDisplay = borrowerObj?.username
-        ? `${escapeHtml(borrowerObj.username)}${borrowerObj?.email ? ` (${escapeHtml(borrowerObj.email)})` : ""}`
-        : (item.borrowerName || (borrowerObj?._id || borrowerObj || "—"));
-
-      left.innerHTML = `
-        <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
-        <div class="meta">
-          Author: ${escapeHtml(item.bookAuthor || "Unknown")} • Status: <strong>${escapeHtml(item.status)}</strong>
-          <div>Borrower: ${borrowerDisplay}</div>
-          <div>Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}</div>
-        </div>
-      `;
-
-      const right = document.createElement("div");
-      right.className = "right";
-
-      if (item.status !== "returned") {
-        const markBtn = document.createElement("button");
-        markBtn.className = "btn";
-        markBtn.textContent = "Mark Returned";
-        markBtn.addEventListener("click", () => markReturned(item._id || item._id || item.id));
-        right.appendChild(markBtn);
-      }
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "btn btn-ghost";
-      delBtn.textContent = "Delete";
-      delBtn.addEventListener("click", () => deleteLending(item._id || item.id));
-      right.appendChild(delBtn);
-
-      card.appendChild(left);
-      card.appendChild(right);
+      const card = renderLendingCardForLender(item);
       myLendingsEl.appendChild(card);
     });
   } catch (err) {
@@ -362,51 +396,29 @@ async function loadMyLendings() {
   }
 }
 
+// loadBorrowed: fetch lendings and show those where current user is borrower
 async function loadBorrowed() {
   if (!borrowedEl) return;
   borrowedEl.innerHTML = "Loading...";
   try {
-    // backend doesn't expose /borrowed in your router -> fetch all and filter
     const res = await authFetch(`${API_BASE}/lending`);
     if (!res.ok) { borrowedEl.innerText = "Failed to load borrowed items"; return; }
-    const arr = await res.json();
+    const payload = await res.json();
+    const all = normalizeLendingsResponse(payload);
 
-    // get current user id
     const currentUserId = resolveCurrentUserId();
-    const borrowed = currentUserId ? arr.filter(l => {
-      const bid = l.borrower?._id || l.borrowerId || l.borrower;
-      return String(bid) === String(currentUserId);
-    }) : [];
+    const borrowed = currentUserId
+      ? all.filter(l => {
+        const bid = l.borrower?._id || l.borrowerId || l.borrower;
+        return String(bid) === String(currentUserId);
+      })
+      : [];
 
     if (!borrowed.length) { borrowedEl.innerHTML = "<p>No borrowed items.</p>"; return; }
 
     borrowedEl.innerHTML = "";
     borrowed.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "lend-card";
-      const overdue = (item.dueDate && new Date() > new Date(item.dueDate) && item.status !== "returned");
-
-      const lenderObj = item.lender || item.lenderId || item.lenderId?._id ? item.lender || item.lenderId : null;
-      const lenderDisplay = lenderObj?.username
-        ? `${escapeHtml(lenderObj.username)}${lenderObj?.email ? ` (${escapeHtml(lenderObj.email)})` : ""}`
-        : (lenderObj?._id || "Lender");
-
-      const left = document.createElement("div");
-      left.className = "left";
-      left.innerHTML = `
-        <strong>${escapeHtml(item.bookTitle)}</strong> ${overdue ? '<span class="tag">OVERDUE</span>' : ''}
-        <div class="meta">
-          From: ${lenderDisplay}
-          • Due: ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "Not set"}
-          • Status: <strong>${escapeHtml(item.status)}</strong>
-        </div>
-      `;
-
-      const right = document.createElement("div");
-      right.className = "right";
-
-      card.appendChild(left);
-      card.appendChild(right);
+      const card = renderBorrowedCard(item);
       borrowedEl.appendChild(card);
     });
   } catch (err) {
@@ -415,63 +427,144 @@ async function loadBorrowed() {
   }
 }
 
-// ---------- actions ----------
+// End of PART 3
+// js_files/lending.js — PART 4 of 6
+// ------------------------------
+// ACTIONS: markReturned, deleteLending
+
 async function markReturned(id) {
-  if (!confirm("Mark this lending as returned?")) return;
+  if (!id) { alert('Missing lending id'); return; }
+  if (!confirm('Mark this lending as returned?')) return;
+
   try {
-    // backend route: PATCH /api/lending/:id/return
-    const res = await authFetch(`${API_BASE}/lending/${id}/return`, { method: "PATCH" });
-    if (!res.ok) {
-      const text = await res.text();
-      alert("Mark returned failed: " + text);
+    // primary (your server uses PATCH /api/lending/:id/return)
+    let res = await authFetch(`${API_BASE}/lending/${id}/return`, { method: 'PATCH' });
+
+    // fallback: some older APIs use POST /api/lending/return/:id
+    if (res && res.status === 404) {
+      res = await authFetch(`${API_BASE}/lending/return/${id}`, { method: 'POST' });
+    }
+
+    if (!res) {
+      alert('Mark returned failed: no response from server');
       return;
     }
-    const d = await res.json();
-    alert(d.message || "Marked returned");
-    await loadMyLendings(); await loadBorrowed();
+
+    if (!res.ok) {
+      let bodyText;
+      try { bodyText = await res.text(); } catch (e) { bodyText = String(e); }
+      // try to parse json message
+      try {
+        const json = JSON.parse(bodyText);
+        alert('Mark returned failed: ' + (json.message || JSON.stringify(json)));
+      } catch (e) {
+        alert('Mark returned failed: ' + (bodyText ? bodyText.slice(0, 300) : `status ${res.status}`));
+      }
+      return;
+    }
+
+    // success
+    let data;
+    try { data = await res.json(); } catch (e) { data = {}; }
+    alert(data.message || 'Marked returned');
+
+    // refresh lists
+    await loadMyLendings();
+    await loadBorrowed();
   } catch (err) {
-    console.error("markReturned error:", err);
-    alert("Failed to mark returned (see console)");
+    console.error('markReturned error:', err);
+    alert('Failed to mark returned (see console)');
   }
 }
 
 async function deleteLending(id) {
-  if (!confirm("Delete this lending record?")) return;
+  if (!id) { alert('Missing lending id'); return; }
+  if (!confirm('Delete this lending record?')) return;
+
   try {
-    // backend route: DELETE /api/lending/:id
-    const res = await authFetch(`${API_BASE}/lending/${id}`, { method: "DELETE" });
-    if (!res.ok) { const text = await res.text(); alert("Delete failed: " + text); return; }
-    const d = await res.json();
-    alert(d.message || "Deleted");
-    await loadMyLendings(); await loadBorrowed();
+    const res = await authFetch(`${API_BASE}/lending/${id}`, { method: 'DELETE' });
+    if (!res) {
+      alert('Delete failed: no response from server');
+      return;
+    }
+    if (!res.ok) {
+      let bodyText;
+      try { bodyText = await res.text(); } catch(e) { bodyText = String(e); }
+      try {
+        const json = JSON.parse(bodyText);
+        alert('Delete failed: ' + (json.message || JSON.stringify(json)));
+      } catch (e) {
+        alert('Delete failed: ' + (bodyText ? bodyText.slice(0, 300) : `status ${res.status}`));
+      }
+      return;
+    }
+
+    let data;
+    try { data = await res.json(); } catch(e) { data = {}; }
+    alert(data.message || 'Deleted');
+
+    // refresh lists
+    await loadMyLendings();
+    await loadBorrowed();
   } catch (err) {
-    console.error("deleteLending error:", err);
-    alert("Failed to delete (see console)");
+    console.error('deleteLending error:', err);
+    alert('Failed to delete (see console)');
   }
 }
 
-// ---------- notifications: UI + API + socket ----------
+// End of PART 4
+// js_files/lending.js — PART 5 of 6
+// ------------------------------
+// NOTIFICATIONS UI + Socket.IO
+
+// Render notification list (robust)
+function renderNotifications() {
+  if (!notifList) return;
+  if (!notifications || !notifications.length) {
+    notifList.innerHTML = '<div class="empty">No notifications</div>';
+    notifCountElm.textContent = '';
+    return;
+  }
+  const unread = notifications.filter(n => !n.read).length;
+  notifCountElm.textContent = unread ? unread : '';
+  notifList.innerHTML = notifications.map(n => {
+    const cls = n.read ? 'notif read' : 'notif unread';
+    const linkAttr = n.link ? `data-link="${escapeHtml(n.link)}"` : '';
+    return `<div class="${cls}" data-id="${n._id}" ${linkAttr}>
+      <div class="message">${escapeHtml(n.message)}</div>
+      <div class="meta">${timeAgoOrLocal(n.createdAt)}</div>
+    </div>`;
+  }).join('');
+}
+
+// Fetch notifications from server (normalize response)
 async function fetchNotifications() {
   try {
-    // notifications router is mounted at /api/notifications
     const res = await authFetch(`${API_BASE}/notifications`);
     if (!res.ok) return;
-    const data = await res.json();
-    notifications = data.notifications || [];
+    let data = await res.json();
+    if (Array.isArray(data)) notifications = data;
+    else if (Array.isArray(data.notifications)) notifications = data.notifications;
+    else if (Array.isArray(data.data)) notifications = data.data;
+    else {
+      // find first array
+      const firstArr = Object.values(data).find(v => Array.isArray(v));
+      notifications = Array.isArray(firstArr) ? firstArr : [];
+    }
     renderNotifications();
   } catch (err) {
     console.error('fetchNotifications error', err);
   }
 }
 
-// mark a notif as read server-side
+// Mark a single notification read (server-side)
 async function markNotificationRead(id) {
+  if (!id) return;
   try {
-    // notifications route: PATCH /api/notifications/:id/read
     const url = `${API_BASE}/notifications/${id}/read`;
     const res = await authFetch(url, { method: 'PATCH' });
-    if (!res.ok) return;
-    const { notification } = await res.json();
+    if (!res || !res.ok) return;
+    // update local cache
     notifications = notifications.map(n => n._id === id ? { ...n, read: true } : n);
     renderNotifications();
   } catch (err) {
@@ -482,12 +575,13 @@ async function markNotificationRead(id) {
 async function markAllRead() {
   const unread = notifications.filter(n => !n.read).map(n => n._id);
   for (const id of unread) {
-    // sequential to avoid rate issues; can switch to Promise.all if desired
+    // sequential to avoid bursts
     // eslint-disable-next-line no-await-in-loop
     await markNotificationRead(id);
   }
 }
-// notif click handlers (delegation)
+
+// Notification click handlers (delegation)
 if (notifList) {
   notifList.addEventListener('click', (e) => {
     const item = e.target.closest('.notif');
@@ -507,7 +601,19 @@ if (notifBtn) {
 }
 if (markAllReadBtn) markAllReadBtn.addEventListener('click', () => markAllRead());
 
-// ---------- socket.io setup ----------
+// small toast helper
+function toast(msg) {
+  if (!msg) return;
+  const t = document.createElement('div');
+  t.className = 'notif-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('visible'));
+  setTimeout(() => t.classList.remove('visible'), 3000);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// Setup Socket.IO client (real-time)
 function setupSocket() {
   try {
     const token = getTokenForSocket();
@@ -516,7 +622,7 @@ function setupSocket() {
       return;
     }
 
-    // connect to your server's socket endpoint
+    // connect to server origin (ensure SOCKET_URL is correct)
     socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
 
     socket.on('connect', () => {
@@ -526,7 +632,7 @@ function setupSocket() {
     });
 
     socket.on('notification', (notif) => {
-      // insert at top
+      // push newest on top, keep array length bounded
       notifications.unshift(notif);
       if (notifications.length > 200) notifications = notifications.slice(0, 200);
       renderNotifications();
@@ -539,35 +645,40 @@ function setupSocket() {
 
     socket.on('disconnect', (reason) => {
       console.log('Socket disconnected', reason);
-      // will fallback to polling via fetchNotifications on open of dropdown
     });
-
   } catch (err) {
     console.error('setupSocket error', err);
   }
 }
 
-// small toast
-function toast(msg) {
-  const t = document.createElement('div');
-  t.className = 'notif-toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  requestAnimationFrame(() => t.classList.add('visible'));
-  setTimeout(() => t.classList.remove('visible'), 3000);
-  setTimeout(() => t.remove(), 3500);
-}
+// End of PART 5
+// ------------------------------
+// js_files/lending.js — PART 6 of 6
+// ------------------------------
+// BOOTSTRAP / INIT: run when the page loads
 
-// ---------- bootstrap ----------
-(async function init() {
+(async function initLendingPage() {
   try {
+    // initial data
     await loadMyLendings();
     await loadBorrowed();
+
     // initial notifications
     await fetchNotifications();
-    // socket
+
+    // realtime
     setupSocket();
+
+    // optional: close notif dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!notifDropdown) return;
+      const withinBtn = notifBtn && notifBtn.contains(e.target);
+      const withinDrop = notifDropdown.contains(e.target);
+      if (!withinBtn && !withinDrop && !notifDropdown.classList.contains('hidden')) {
+        notifDropdown.classList.add('hidden');
+      }
+    });
   } catch (err) {
-    console.error('init error', err);
+    console.error('Init error:', err);
   }
 })();
