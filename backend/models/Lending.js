@@ -1,21 +1,21 @@
 // models/Lending.js
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const lendingSchema = new mongoose.Schema({
-  lenderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+const LendingSchema = new mongoose.Schema({
   bookTitle: { type: String, required: true },
-  bookAuthor: { type: String },
-  borrowerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
-  borrowerName: { type: String, default: "" },
-  borrowerContact: { type: String, default: "" },
-  status: { type: String, enum: ["pending", "confirmed", "returned"], default: "pending" },
-  dueDate: { type: Date, default: null },
-  createdAt: { type: Date, default: Date.now }
-});
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'Book', required: false }, // optional if you have Book collection
+  lender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  borrower: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  lentOn: { type: Date, default: Date.now },
+  dueDate: { type: Date },
+  returned: { type: Boolean, default: false },
+  returnedOn: { type: Date },
+  notes: { type: String },
+  status: {
+    type: String,
+    enum: ['lent', 'returned', 'cancelled'],
+    default: 'lent'
+  }
+}, { timestamps: true });
 
-lendingSchema.virtual("isOverdue").get(function() {
-  if (!this.dueDate || this.status === "returned") return false;
-  return new Date() > this.dueDate;
-});
-
-module.exports = mongoose.model("Lending", lendingSchema);
+module.exports = mongoose.model('Lending', LendingSchema);

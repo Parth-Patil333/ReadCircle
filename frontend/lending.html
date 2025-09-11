@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
   <title>ReadCircle — Lending</title>
@@ -9,44 +8,65 @@
 
 <body>
   <div class="container">
-    <h2 class="page-title">Lending Tracker</h2>
+    <header class="page-header">
+      <h2 class="page-title">Lending Tracker</h2>
 
-    <!-- Create lending form (Lender) -->
-    <section class="card">
-      <h3>Create Lending (Lender)</h3>
-      <form id="createLendForm" class="form-grid">
-        <input id="bookTitle" placeholder="Book title" required />
-        <input id="bookAuthor" placeholder="Author (optional)" />
-
-        <!-- User search -->
-        <div class="search-wrapper">
-          <input id="borrowerSearch" autocomplete="off" placeholder="Search borrower by name or email" />
-          <input type="hidden" id="borrowerId" />
-          <div id="borrowerSuggestions" class="suggestions"></div>
+      <!-- Notification area (only in lending.html as requested) -->
+      <div id="notification-area" class="notif-area">
+        <button id="notifBtn" class="notif-btn" aria-label="Notifications">
+          🔔 <span id="notifCount" class="badge"></span>
+        </button>
+        <div id="notifDropdown" class="notif-dropdown hidden" role="menu" aria-hidden="true">
+          <div class="notif-header">
+            <strong>Notifications</strong>
+            <button id="markAllReadBtn" class="small-btn">Mark all read</button>
+          </div>
+          <div id="notifList" class="notif-list">No notifications</div>
         </div>
+      </div>
+    </header>
 
-        <input id="dueDate" type="date" />
-        <button type="submit" class="btn">Create Lending</button>
-      </form>
-      <small class="tip">💡 Pick a user from suggestions to assign & notify them.  
-        You can still paste a user id if needed.</small>
-    </section>
+    <main>
+      <!-- Create lending form (Lender) -->
+      <section class="card">
+        <h3>Create Lending (Lender)</h3>
+        <form id="createLendForm" class="form-grid">
+          <input id="bookTitle" placeholder="Book title" required />
+          <input id="bookAuthor" placeholder="Author (optional)" />
 
-    <!-- Lender's lendings -->
-    <section class="card">
-      <h3>My Lendings (I'm the lender)</h3>
-      <div id="myLendingsList">Loading...</div>
-    </section>
+          <!-- User search -->
+          <div class="search-wrapper">
+            <input id="borrowerSearch" autocomplete="off" placeholder="Search borrower by name or email" />
+            <input type="hidden" id="borrowerId" />
+            <div id="borrowerSuggestions" class="suggestions"></div>
+          </div>
 
-    <!-- Borrowed items for current user -->
-    <section class="card">
-      <h3>Items I Borrowed (where I'm borrower)</h3>
-      <div id="borrowedList">Loading...</div>
-    </section>
+          <input id="dueDate" type="date" />
+          <button type="submit" class="btn">Create Lending</button>
+        </form>
+        <small class="tip">💡 Pick a user from suggestions to assign & notify them. You can still paste a user id if needed.</small>
+      </section>
+
+      <!-- Lender's lendings -->
+      <section class="card">
+        <h3>My Lendings (I'm the lender)</h3>
+        <div id="myLendingsList">Loading...</div>
+      </section>
+
+      <!-- Borrowed items for current user -->
+      <section class="card">
+        <h3>Items I Borrowed (where I'm borrower)</h3>
+        <div id="borrowedList">Loading...</div>
+      </section>
+    </main>
   </div>
 
-  <script src="js_files/auth.js"></script>
-  <script src="js_files/lending.js"></script>
-</body>
+  <!-- socket.io client served from the Socket.IO server; if your client is hosted separately,
+       the script will still load from the server if origins allow. -->
+  <script src="/socket.io/socket.io.js"></script>
 
+  <!-- your auth helper must expose requireAuth() and authFetch() as mentioned -->
+  <script src="js_files/auth.js"></script>
+  <script src="js_files/lending.js" type="module"></script>
+</body>
 </html>

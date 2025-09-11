@@ -18,78 +18,13 @@
 
 body {
   font-family: var(--font-body);
-  background: var(--grey-shade);
-  color: white;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   background: #fff; /* white background */
   color: var(--grey-shade);
   line-height: 1.6;
   padding: 2rem;
 }
 
-/* Topbar (shared style) */
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: var(--indigo-shade);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  font-family: var(--font-heading);
-  font-size: 1.5rem;
-}
-
-.logo-dot {
-  width: 12px;
-  height: 12px;
-  background: var(--indigo-tint);
-  border-radius: 50%;
-  margin-right: 0.5rem;
-}
-
-.userbox {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-/* Buttons */
-.btn {
-  background: var(--indigo-base);
-  color: white;
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 0.4rem;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.btn:hover {
-  background: var(--indigo-tint);
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--grey-tint);
-  color: white;
-}
-
-.btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* Container */
 .container {
-  max-width: 900px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-  flex: 1;
   max-width: 1000px;
   margin: auto;
 }
@@ -102,11 +37,6 @@ body {
   text-align: center;
 }
 
-/* Cards */
-.card {
-  background: var(--grey-base);
-  border-radius: 1rem;
-}
 /* Card styling */
 .card {
   background: #fff;
@@ -184,47 +114,6 @@ input:focus {
 }
 
 .suggestions div:hover {
-  background: var(--grey-tint);
-}
-
-/* Lists */
-.list-box {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--grey-tint);
-  border-radius: 0.6rem;
-  padding: 1rem;
-  font-size: 0.9rem;
-}
-
-/* Tip text */
-.tip {
-  display: block;
-  margin-top: 0.8rem;
-  font-size: 0.85rem;
-  color: var(--grey-tint);
-}
-
-/* Back link */
-.back-link {
-  text-align: center;
-  margin-top: 1rem;
-}
-
-.back-link a {
-  color: var(--indigo-tint);
-  text-decoration: none;
-}
-
-.back-link a:hover {
-  text-decoration: underline;
-}
-
-/* Footer */
-.foot {
-  margin-top: auto;
-  text-align: center;
-  padding: 1rem;
-  background: var(--grey-base);
   background: var(--indigo-tint);
   color: white;
 }

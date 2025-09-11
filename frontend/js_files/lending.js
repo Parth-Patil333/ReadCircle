@@ -1,6 +1,19 @@
-// js_files/lending.js
+// js_files/lending.js (ES module)
 const API_BASE = "https://readcircle.onrender.com/api";
-requireAuth(); // guard (auth.js must define this and authFetch)
+const SOCKET_URL = API_BASE.replace(/\/api\/?$/, ''); // base URL for socket io
+requireAuth(); // must be defined in auth.js and set up authFetch()
+
+// ---------- token helper ----------
+function getTokenForSocket() {
+  // prefer authGetToken if your auth.js exposes it; otherwise fallback to localStorage
+  try {
+    if (typeof authGetToken === 'function') {
+      const t = authGetToken();
+      return t ? (t.startsWith('Bearer ') ? t : `Bearer ${t}`) : null;
+    }
+  } catch (e) {}
+  return localStorage.getItem('token') || null; // may be "Bearer <token>" or raw
+}
 
 // ---------- small helpers ----------
 function escapeHtml(s) {
@@ -13,12 +26,29 @@ function debounce(fn, wait = 300) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
 }
+function timeAgoOrLocal(dateStr) {
+  try { return new Date(dateStr).toLocaleString(); } catch(e){ return dateStr; }
+}
 
-// ---------- user search UI (borrower selection) ----------
+// ---------- DOM refs ----------
 const borrowerSearch = document.getElementById("borrowerSearch");
 const borrowerSuggestions = document.getElementById("borrowerSuggestions");
 const borrowerIdInput = document.getElementById("borrowerId");
+const createForm = document.getElementById("createLendForm");
+const myLendingsEl = document.getElementById("myLendingsList");
+const borrowedEl = document.getElementById("borrowedList");
 
+// notification UI refs
+const notifBtn = document.getElementById('notifBtn');
+const notifDropdown = document.getElementById('notifDropdown');
+const notifList = document.getElementById('notifList');
+const notifCountElm = document.getElementById('notifCount');
+const markAllReadBtn = document.getElementById('markAllReadBtn');
+
+let notifications = [];
+let socket = null;
+
+// ---------- user search (borrower selection) ----------
 async function queryUsers(term) {
   if (!term || term.length < 2) return renderSuggestions([]);
   try {
@@ -34,19 +64,18 @@ async function queryUsers(term) {
 
 function renderSuggestions(users) {
   if (!borrowerSuggestions) return;
+  borrowerSuggestions.innerHTML = "";
   if (!users || !users.length) {
     borrowerSuggestions.style.display = "none";
-    borrowerSuggestions.innerHTML = "";
     return;
   }
-  borrowerSuggestions.innerHTML = "";
   users.forEach(u => {
     const item = document.createElement("div");
     item.className = "suggestion-item";
     item.innerHTML = `<strong>${escapeHtml(u.username)}</strong> <span class="muted">(${escapeHtml(u.email || u._id)})</span>`;
     item.addEventListener("click", () => {
-      if (borrowerSearch) borrowerSearch.value = `${u.username} (${u.email || u._id})`;
-      if (borrowerIdInput) borrowerIdInput.value = u._id;
+      borrowerSearch.value = `${u.username} (${u.email || u._id})`;
+      borrowerIdInput.value = u._id;
       borrowerSuggestions.style.display = "none";
     });
     borrowerSuggestions.appendChild(item);
@@ -58,17 +87,15 @@ const debouncedQuery = debounce((v) => queryUsers(v), 300);
 
 if (borrowerSearch && borrowerSuggestions && borrowerIdInput) {
   borrowerSearch.addEventListener("input", (e) => {
-    borrowerIdInput.value = ""; // clear previously selected id
+    borrowerIdInput.value = "";
     const v = e.target.value.trim();
     if (!v) return renderSuggestions([]);
     debouncedQuery(v);
   });
-
   borrowerSearch.addEventListener("focus", (e) => {
     const v = e.target.value.trim();
     if (v && v.length >= 2) debouncedQuery(v);
   });
-
   document.addEventListener("click", (ev) => {
     if (!document.getElementById("borrowerSearch")?.contains(ev.target) &&
         !document.getElementById("borrowerSuggestions")?.contains(ev.target)) {
@@ -78,7 +105,6 @@ if (borrowerSearch && borrowerSuggestions && borrowerIdInput) {
 }
 
 // ---------- create lending ----------
-const createForm = document.getElementById("createLendForm");
 if (createForm) {
   createForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -129,10 +155,10 @@ if (createForm) {
       const data = await res.json();
       alert(data.message || "Lending created");
       createForm.reset();
-      if (borrowerIdInput) borrowerIdInput.value = "";
-      if (borrowerSearch) borrowerSearch.value = "";
-      loadMyLendings();
-      loadBorrowed();
+      borrowerIdInput.value = "";
+      borrowerSearch.value = "";
+      await loadMyLendings();
+      await loadBorrowed();
     } catch (err) {
       console.error("create lending error:", err);
       alert("Failed to create lending (see console)");
@@ -142,16 +168,15 @@ if (createForm) {
 
 // ---------- load & render lists ----------
 async function loadMyLendings() {
-  const el = document.getElementById("myLendingsList");
-  if (!el) return;
-  el.innerHTML = "Loading...";
+  if (!myLendingsEl) return;
+  myLendingsEl.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending`);
-    if (!res.ok) { el.innerText = "Failed to load lendings"; return; }
+    if (!res.ok) { myLendingsEl.innerText = "Failed to load lendings"; return; }
     const arr = await res.json();
-    if (!arr.length) { el.innerHTML = "<p>No lendings created.</p>"; return; }
+    if (!arr.length) { myLendingsEl.innerHTML = "<p>No lendings created.</p>"; return; }
 
-    el.innerHTML = "";
+    myLendingsEl.innerHTML = "";
     arr.forEach(item => {
       const card = document.createElement("div");
       card.className = "lend-card";
@@ -192,25 +217,24 @@ async function loadMyLendings() {
 
       card.appendChild(left);
       card.appendChild(right);
-      el.appendChild(card);
+      myLendingsEl.appendChild(card);
     });
   } catch (err) {
     console.error("loadMyLendings error:", err);
-    el.innerText = "Failed to load lendings";
+    myLendingsEl.innerText = "Failed to load lendings";
   }
 }
 
 async function loadBorrowed() {
-  const el = document.getElementById("borrowedList");
-  if (!el) return;
-  el.innerHTML = "Loading...";
+  if (!borrowedEl) return;
+  borrowedEl.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending/borrowed`);
-    if (!res.ok) { el.innerText = "Failed to load borrowed items"; return; }
+    if (!res.ok) { borrowedEl.innerText = "Failed to load borrowed items"; return; }
     const arr = await res.json();
-    if (!arr.length) { el.innerHTML = "<p>No borrowed items.</p>"; return; }
+    if (!arr.length) { borrowedEl.innerHTML = "<p>No borrowed items.</p>"; return; }
 
-    el.innerHTML = "";
+    borrowedEl.innerHTML = "";
     arr.forEach(item => {
       const card = document.createElement("div");
       card.className = "lend-card";
@@ -236,11 +260,11 @@ async function loadBorrowed() {
 
       card.appendChild(left);
       card.appendChild(right);
-      el.appendChild(card);
+      borrowedEl.appendChild(card);
     });
   } catch (err) {
     console.error("loadBorrowed error:", err);
-    el.innerText = "Failed to load borrowed items";
+    borrowedEl.innerText = "Failed to load borrowed items";
   }
 }
 
@@ -252,7 +276,7 @@ async function markReturned(id) {
     if (!res.ok) { const text = await res.text(); alert("Mark returned failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Marked returned");
-    loadMyLendings(); loadBorrowed();
+    await loadMyLendings(); await loadBorrowed();
   } catch (err) {
     console.error("markReturned error:", err);
     alert("Failed to mark returned (see console)");
@@ -266,13 +290,150 @@ async function deleteLending(id) {
     if (!res.ok) { const text = await res.text(); alert("Delete failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Deleted");
-    loadMyLendings(); loadBorrowed();
+    await loadMyLendings(); await loadBorrowed();
   } catch (err) {
     console.error("deleteLending error:", err);
     alert("Failed to delete (see console)");
   }
 }
 
+// ---------- notifications: UI + API + socket ----------
+async function fetchNotifications() {
+  try {
+    const res = await authFetch(`${API_BASE}/lending/notifications`);
+    if (!res.ok) return;
+    const data = await res.json();
+    notifications = data.notifications || [];
+    renderNotifications();
+  } catch (err) {
+    console.error('fetchNotifications error', err);
+  }
+}
+
+function renderNotifications() {
+  if (!notifList) return;
+  if (!notifications.length) {
+    notifList.innerHTML = '<div class="empty">No notifications</div>';
+    notifCountElm.textContent = '';
+    return;
+  }
+  const unread = notifications.filter(n => !n.read).length;
+  notifCountElm.textContent = unread ? unread : '';
+  notifList.innerHTML = notifications.map(n => {
+    const cls = n.read ? 'notif read' : 'notif unread';
+    const linkAttr = n.link ? `data-link="${escapeHtml(n.link)}"` : '';
+    return `<div class="${cls}" data-id="${n._id}" ${linkAttr}>
+      <div class="message">${escapeHtml(n.message)}</div>
+      <div class="meta">${timeAgoOrLocal(n.createdAt)}</div>
+    </div>`;
+  }).join('');
+}
+
+// mark a notif as read server-side
+async function markNotificationRead(id) {
+  try {
+    const url = `${API_BASE}/lending/notifications/${id}/read`;
+    const res = await authFetch(url, { method: 'PATCH' });
+    if (!res.ok) return;
+    const { notification } = await res.json();
+    notifications = notifications.map(n => n._id === id ? { ...n, read: true } : n);
+    renderNotifications();
+  } catch (err) {
+    console.error('markNotificationRead error', err);
+  }
+}
+
+async function markAllRead() {
+  const unread = notifications.filter(n => !n.read).map(n => n._id);
+  for (const id of unread) {
+    // sequential to avoid rate issues; can switch to Promise.all if desired
+    // small delay could be added if API rate-limits
+    // eslint-disable-next-line no-await-in-loop
+    await markNotificationRead(id);
+  }
+}
+
+// notif click handlers (delegation)
+if (notifList) {
+  notifList.addEventListener('click', (e) => {
+    const item = e.target.closest('.notif');
+    if (!item) return;
+    const id = item.dataset.id;
+    const link = item.dataset.link;
+    markNotificationRead(id).then(() => {
+      if (link) window.location.href = link;
+    });
+  });
+}
+if (notifBtn) {
+  notifBtn.addEventListener('click', () => {
+    notifDropdown.classList.toggle('hidden');
+    if (!notifDropdown.classList.contains('hidden')) fetchNotifications();
+  });
+}
+if (markAllReadBtn) markAllReadBtn.addEventListener('click', () => markAllRead());
+
+// ---------- socket.io setup ----------
+function setupSocket() {
+  try {
+    const token = getTokenForSocket();
+    if (!token) {
+      console.warn('No token for socket auth; socket will not connect.');
+      return;
+    }
+
+    // connect to your server's socket endpoint
+    socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
+
+    socket.on('connect', () => {
+      console.log('Socket connected', socket.id);
+      // refresh notifications on connect
+      fetchNotifications();
+    });
+
+    socket.on('notification', (notif) => {
+      // insert at top
+      notifications.unshift(notif);
+      if (notifications.length > 200) notifications = notifications.slice(0, 200);
+      renderNotifications();
+      toast(notif.message);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn('Socket connect error:', err && err.message ? err.message : err);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected', reason);
+      // will fallback to polling via fetchNotifications on open of dropdown
+    });
+
+  } catch (err) {
+    console.error('setupSocket error', err);
+  }
+}
+
+// small toast
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'notif-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('visible'));
+  setTimeout(() => t.classList.remove('visible'), 3000);
+  setTimeout(() => t.remove(), 3500);
+}
+
 // ---------- bootstrap ----------
-loadMyLendings();
-loadBorrowed();
+(async function init() {
+  try {
+    await loadMyLendings();
+    await loadBorrowed();
+    // initial notifications
+    await fetchNotifications();
+    // socket
+    setupSocket();
+  } catch (err) {
+    console.error('init error', err);
+  }
+})();
