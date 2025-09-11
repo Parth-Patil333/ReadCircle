@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>ReadCircle — Lending</title>
@@ -44,7 +45,8 @@
           <input id="dueDate" type="date" />
           <button type="submit" class="btn">Create Lending</button>
         </form>
-        <small class="tip">💡 Pick a user from suggestions to assign & notify them. You can still paste a user id if needed.</small>
+        <small class="tip">💡 Pick a user from suggestions to assign & notify them. You can still paste a user id if
+          needed.</small>
       </section>
 
       <!-- Lender's lendings -->
@@ -63,10 +65,12 @@
 
   <!-- socket.io client served from the Socket.IO server; if your client is hosted separately,
        the script will still load from the server if origins allow. -->
-  <script src="/socket.io/socket.io.js"></script>
-
+  <!-- put this BEFORE your lending.js -->
+  
   <!-- your auth helper must expose requireAuth() and authFetch() as mentioned -->
   <script src="js_files/auth.js"></script>
+  <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
   <script src="js_files/lending.js" type="module"></script>
 </body>
+
 </html>

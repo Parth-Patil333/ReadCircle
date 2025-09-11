@@ -1,6 +1,5 @@
-// js_files/lending.js (ES module)
-const API_BASE = "https://readcircle.onrender.com/api";
-const SOCKET_URL = API_BASE.replace(/\/api\/?$/, ''); // base URL for socket io
+const API_BASE = "https://readcircle.onrender.com/api";       // your backend API base
+const SOCKET_URL = "https://readcircle.onrender.com";        // socket server origin
 requireAuth(); // must be defined in auth.js and set up authFetch()
 
 // ---------- token helper ----------
@@ -138,7 +137,7 @@ if (createForm) {
         dueDate: dueDateVal || undefined
       };
 
-      const res = await authFetch(`${API_BASE}/lending`, {
+      const res = await authFetch(`${API_BASE}/lendings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -171,7 +170,7 @@ async function loadMyLendings() {
   if (!myLendingsEl) return;
   myLendingsEl.innerHTML = "Loading...";
   try {
-    const res = await authFetch(`${API_BASE}/lending`);
+    const res = await authFetch(`${API_BASE}/lendings`);
     if (!res.ok) { myLendingsEl.innerText = "Failed to load lendings"; return; }
     const arr = await res.json();
     if (!arr.length) { myLendingsEl.innerHTML = "<p>No lendings created.</p>"; return; }
@@ -229,7 +228,7 @@ async function loadBorrowed() {
   if (!borrowedEl) return;
   borrowedEl.innerHTML = "Loading...";
   try {
-    const res = await authFetch(`${API_BASE}/lending/borrowed`);
+    const res = await authFetch(`${API_BASE}/lendings/borrowed`);
     if (!res.ok) { borrowedEl.innerText = "Failed to load borrowed items"; return; }
     const arr = await res.json();
     if (!arr.length) { borrowedEl.innerHTML = "<p>No borrowed items.</p>"; return; }
@@ -272,7 +271,7 @@ async function loadBorrowed() {
 async function markReturned(id) {
   if (!confirm("Mark this lending as returned?")) return;
   try {
-    const res = await authFetch(`${API_BASE}/lending/return/${id}`, { method: "POST" });
+    const res = await authFetch(`${API_BASE}/lendings/return/${id}`, { method: "POST" });
     if (!res.ok) { const text = await res.text(); alert("Mark returned failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Marked returned");
@@ -286,7 +285,7 @@ async function markReturned(id) {
 async function deleteLending(id) {
   if (!confirm("Delete this lending record?")) return;
   try {
-    const res = await authFetch(`${API_BASE}/lending/${id}`, { method: "DELETE" });
+    const res = await authFetch(`${API_BASE}/lendings/${id}`, { method: "DELETE" });
     if (!res.ok) { const text = await res.text(); alert("Delete failed: " + text); return; }
     const d = await res.json();
     alert(d.message || "Deleted");
@@ -300,7 +299,7 @@ async function deleteLending(id) {
 // ---------- notifications: UI + API + socket ----------
 async function fetchNotifications() {
   try {
-    const res = await authFetch(`${API_BASE}/lending/notifications`);
+    const res = await authFetch(`${API_BASE}/lendings/notifications`);
     if (!res.ok) return;
     const data = await res.json();
     notifications = data.notifications || [];
@@ -332,7 +331,7 @@ function renderNotifications() {
 // mark a notif as read server-side
 async function markNotificationRead(id) {
   try {
-    const url = `${API_BASE}/lending/notifications/${id}/read`;
+    const url = `${API_BASE}/lendings/notifications/${id}/read`;
     const res = await authFetch(url, { method: 'PATCH' });
     if (!res.ok) return;
     const { notification } = await res.json();
