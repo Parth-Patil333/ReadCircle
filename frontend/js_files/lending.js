@@ -253,11 +253,35 @@ if (createForm) {
       if (contentType.includes('application/json')) {
         data = await res.json();
       } else {
-        // server returned non-JSON success (unexpected) — still proceed
         data = {};
       }
+      console.log('create lending response:', data);
+      alert((data.message || (data.lending && data.lending.message)) || 'Lending created');
 
-      alert(data.message || 'Lending created');
+      // if server returned the created lending object directly, and it lacks lender info,
+      // try to append it to lender list after a tiny delay (or reload)
+      if (data.lending) {
+        const lending = data.lending;
+        const lenderId = lending?.lender?._id || lending?.lender || lending?.lenderId || lending?.lender?.id;
+        console.log('created lending lender id:', lenderId, 'currentUserId:', resolveCurrentUserId());
+        if (String(lenderId) === String(resolveCurrentUserId())) {
+          // prepend or reload to ensure lender sees it
+          if (myLendingsEl) {
+            const card = renderLendingCardForLender(lending);
+            myLendingsEl.insertBefore(card, myLendingsEl.firstChild);
+          } else {
+            await loadMyLendings();
+          }
+        } else {
+          // not lender, still refresh borrowed list
+          await loadBorrowed();
+        }
+      } else {
+        // fallback: refresh both lists
+        await loadMyLendings();
+        await loadBorrowed();
+      }
+
 
       createForm.reset();
       if (borrowerIdInput) borrowerIdInput.value = '';
@@ -489,7 +513,7 @@ async function deleteLending(id) {
     }
     if (!res.ok) {
       let bodyText;
-      try { bodyText = await res.text(); } catch(e) { bodyText = String(e); }
+      try { bodyText = await res.text(); } catch (e) { bodyText = String(e); }
       try {
         const json = JSON.parse(bodyText);
         alert('Delete failed: ' + (json.message || JSON.stringify(json)));
@@ -500,7 +524,7 @@ async function deleteLending(id) {
     }
 
     let data;
-    try { data = await res.json(); } catch(e) { data = {}; }
+    try { data = await res.json(); } catch (e) { data = {}; }
     alert(data.message || 'Deleted');
 
     // refresh lists
@@ -627,6 +651,8 @@ function setupSocket() {
 
     socket.on('connect', () => {
       console.log('Socket connected', socket.id);
+      // expose socket for quick console inspection (temporary)
+      try { window.__rc_socket = socket; } catch (e) { }
       // refresh notifications on connect
       fetchNotifications();
     });
@@ -637,6 +663,56 @@ function setupSocket() {
       if (notifications.length > 200) notifications = notifications.slice(0, 200);
       renderNotifications();
       toast(notif.message);
+    });
+
+    // ---------- realtime lending events ----------
+    socket.on('lending:created', (payload) => {
+      try {
+        console.log('socket lending:created', payload);
+        const lending = payload && payload.lending ? payload.lending : payload;
+        const currentUserId = resolveCurrentUserId();
+
+        // try to get lender id from multiple shapes; if missing, assume current user (defensive)
+        const lenderId = lending?.lender?._id || lending?.lender || lending?.lenderId || lending?.lender?.id || currentUserId;
+
+        if (String(lenderId) === String(currentUserId)) {
+          // avoid duplicating the same card if it already exists at top
+          if (myLendingsEl) {
+            const firstCard = myLendingsEl.firstElementChild;
+            const newId = lending?._id || lending?.id;
+            if (firstCard && firstCard.dataset && firstCard.dataset.id === String(newId)) {
+              // already present — skip
+              return;
+            }
+            const card = renderLendingCardForLender(lending);
+            if (newId) card.dataset.id = String(newId); // help identify cards
+            myLendingsEl.insertBefore(card, myLendingsEl.firstChild);
+          } else {
+            loadMyLendings();
+          }
+        } else {
+          // not lender: refresh borrowed list in case this affects the user
+          loadBorrowed();
+        }
+      } catch (e) {
+        console.error('lending:created handler error', e);
+      }
+    });
+
+    socket.on('lending:updated', (payload) => {
+      try {
+        console.log('socket lending:updated', payload);
+        loadMyLendings();
+        loadBorrowed();
+      } catch (e) { console.error('lending:updated handler error', e); }
+    });
+
+    socket.on('lending:deleted', (payload) => {
+      try {
+        console.log('socket lending:deleted', payload);
+        loadMyLendings();
+        loadBorrowed();
+      } catch (e) { console.error('lending:deleted handler error', e); }
     });
 
     socket.on('connect_error', (err) => {
