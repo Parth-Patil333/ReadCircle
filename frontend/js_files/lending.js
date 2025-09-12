@@ -91,6 +91,9 @@ const markAllReadBtn = document.getElementById('markAllReadBtn');
 let notifications = [];
 let socket = null;
 
+// temp cache so new lendings don't vanish when list reloads
+const tempCreatedLendings = new Map();
+
 // 7) borrower search logic (user suggestion dropdown)
 async function queryUsers(term) {
   if (!term || term.length < 2) return renderSuggestions([]);
@@ -228,12 +231,7 @@ if (createForm) {
       const contentType = res.headers.get('content-type') || '';
       if (!res.ok) {
         let bodyText;
-        try {
-          bodyText = await res.text();
-        } catch (e) {
-          bodyText = String(e);
-        }
-        // show meaningful part if it's JSON, else show truncated text
+        try { bodyText = await res.text(); } catch (e) { bodyText = String(e); }
         if (contentType.includes('application/json')) {
           try {
             const json = JSON.parse(bodyText);
@@ -242,54 +240,70 @@ if (createForm) {
             alert('Failed to create lending');
           }
         } else {
-          // likely HTML error page — show brief snippet
           alert('Failed to create lending: ' + (bodyText ? bodyText.slice(0, 300) : `status ${res.status}`));
         }
         return;
       }
 
       // success — parse JSON if possible
-      let data;
+      let data = {};
       if (contentType.includes('application/json')) {
         data = await res.json();
       } else {
-        data = {};
+        try { data = JSON.parse(await res.text()); } catch (e) { data = {}; }
       }
+
       console.log('create lending response:', data);
       alert((data.message || (data.lending && data.lending.message)) || 'Lending created');
 
-      // if server returned the created lending object directly, and it lacks lender info,
-      // try to append it to lender list after a tiny delay (or reload)
+      // ----- CACHE THE NEW LENDING (so it doesn't vanish on list reload) -----
+      if (data.lending && data.lending._id) {
+        const lending = data.lending;
+        const lid = String(lending._id);
+        tempCreatedLendings.set(lid, lending);
+        // auto-clear after 30s to avoid stale entries
+        setTimeout(() => tempCreatedLendings.delete(lid), 30 * 1000);
+      }
+
+      // ----- IMMEDIATE UI UPDATE -----
       if (data.lending) {
         const lending = data.lending;
         const lenderId = lending?.lender?._id || lending?.lender || lending?.lenderId || lending?.lender?.id;
-        console.log('created lending lender id:', lenderId, 'currentUserId:', resolveCurrentUserId());
-        if (String(lenderId) === String(resolveCurrentUserId())) {
-          // prepend or reload to ensure lender sees it
+        const currentUserId = resolveCurrentUserId();
+
+        if (String(lenderId) === String(currentUserId)) {
+          // If current user is lender — show card immediately
           if (myLendingsEl) {
             const card = renderLendingCardForLender(lending);
+            // attach data-id for dedupe/identification
+            const id = lending._id || lending.id || '';
+            if (id) card.dataset.id = String(id);
             myLendingsEl.insertBefore(card, myLendingsEl.firstChild);
           } else {
+            // fallback: load my lendings
             await loadMyLendings();
           }
         } else {
-          // not lender, still refresh borrowed list
+          // not the lender — refresh borrowed list
           await loadBorrowed();
         }
       } else {
-        // fallback: refresh both lists
+        // no lending in response; fallback to full refresh
         await loadMyLendings();
         await loadBorrowed();
       }
 
-
+      // reset form fields
       createForm.reset();
       if (borrowerIdInput) borrowerIdInput.value = '';
       if (borrowerSearch) borrowerSearch.value = '';
 
-      // refresh lists
-      await loadMyLendings();
-      await loadBorrowed();
+      // gentle background refresh (lets server-side propagate) — merge prevents vanishing
+      setTimeout(() => {
+        loadMyLendings();
+        loadBorrowed();
+      }, 800);
+
     } catch (err) {
       console.error('create lending error:', err);
       alert('Failed to create lending (see console)');
@@ -404,14 +418,32 @@ async function loadMyLendings() {
 
     const currentUserId = resolveCurrentUserId();
     const myLendings = currentUserId
-      ? all.filter(l => String(l.lender || l.lenderId || l.lender?._id) === String(currentUserId))
+      ? all.filter(l => String(l.lender || l.lenderId || l.lender?._id || l.lender?._id) === String(currentUserId))
       : all.filter(l => l.isLentByCurrentUser); // fallback if server marks it
 
-    if (!myLendings.length) { myLendingsEl.innerHTML = "<p>No lendings created.</p>"; return; }
+    // Merge any recently created lendings stored in tempCreatedLendings (avoid losing them)
+    const mergedById = new Map();
+    // keep server order first (so server-sent items stay in the server's order)
+    myLendings.forEach(l => {
+      const id = String(l._id || l.id || (l._id && l._id.toString()) || '');
+      if (id) mergedById.set(id, l);
+    });
+    // add cached items if missing (these are typically the newest)
+    for (const [id, cached] of tempCreatedLendings.entries()) {
+      if (!mergedById.has(String(id))) {
+        mergedById.set(String(id), cached);
+      }
+    }
+    const merged = Array.from(mergedById.values());
+
+    if (!merged.length) { myLendingsEl.innerHTML = "<p>No lendings created.</p>"; return; }
 
     myLendingsEl.innerHTML = "";
-    myLendings.forEach(item => {
+    merged.forEach(item => {
       const card = renderLendingCardForLender(item);
+      // attach data-id for dedupe and future reference
+      const id = item._id || item.id || (item._id && item._id.toString()) || '';
+      if (id) card.dataset.id = String(id);
       myLendingsEl.appendChild(card);
     });
   } catch (err) {
@@ -670,6 +702,12 @@ function setupSocket() {
       try {
         console.log('socket lending:created', payload);
         const lending = payload && payload.lending ? payload.lending : payload;
+        // cache the new lending so it won't vanish on reload
+        if (lending && lending._id) {
+          tempCreatedLendings.set(String(lending._id), lending);
+          setTimeout(() => tempCreatedLendings.delete(String(lending._id)), 30 * 1000);
+        }
+
         const currentUserId = resolveCurrentUserId();
 
         // try to get lender id from multiple shapes; if missing, assume current user (defensive)
