@@ -80,6 +80,37 @@ const createLending = async (req, res) => {
           createdAt: lending.createdAt
         }
       });
+      // after emitting to lender
+      if (io) {
+        io.to(String(lenderId)).emit('lending:created', {
+          lending: {
+            _id: lending._id,
+            bookTitle: lending.bookTitle,
+            bookId: lending.bookId || null,
+            lender: lending.lender,
+            borrower: lending.borrower,
+            dueDate: lending.dueDate,
+            notes: lending.notes,
+            status: lending.status,
+            createdAt: lending.createdAt
+          }
+        });
+
+        // debug: log that emit was fired
+        console.log('emit lending:created to user room', String(lenderId));
+
+        // optional: log how many sockets are currently in that room (async)
+        (async () => {
+          try {
+            const sockets = await io.in(String(lenderId)).allSockets(); // Set of socket ids
+            console.log(`sockets in room ${lenderId}:`, sockets.size, Array.from(sockets).slice(0, 10));
+          } catch (err) {
+            console.warn('error listing sockets in room', err);
+          }
+        })();
+      }
+
+
     }
 
     // return populated lending to requester (lender)
