@@ -410,25 +410,27 @@ async function loadMyLendings() {
   if (!myLendingsEl) return;
   myLendingsEl.innerHTML = "Loading...";
   try {
-    // Your backend router is mounted at /api/lending (singular)
     const res = await authFetch(`${API_BASE}/lending`);
     if (!res.ok) { myLendingsEl.innerText = "Failed to load lendings"; return; }
     const payload = await res.json();
     const all = normalizeLendingsResponse(payload);
 
     const currentUserId = resolveCurrentUserId();
+
+    // ✅ FIX: always check lender._id first (because backend populates lender)
     const myLendings = currentUserId
-      ? all.filter(l => String(l.lender || l.lenderId || l.lender?._id || l.lender?._id) === String(currentUserId))
-      : all.filter(l => l.isLentByCurrentUser); // fallback if server marks it
+      ? all.filter(l => {
+          const lid = l.lender?._id || l.lenderId || l.lender;
+          return String(lid) === String(currentUserId);
+        })
+      : [];
 
     // Merge any recently created lendings stored in tempCreatedLendings (avoid losing them)
     const mergedById = new Map();
-    // keep server order first (so server-sent items stay in the server's order)
     myLendings.forEach(l => {
-      const id = String(l._id || l.id || (l._id && l._id.toString()) || '');
+      const id = String(l._id || l.id || '');
       if (id) mergedById.set(id, l);
     });
-    // add cached items if missing (these are typically the newest)
     for (const [id, cached] of tempCreatedLendings.entries()) {
       if (!mergedById.has(String(id))) {
         mergedById.set(String(id), cached);
@@ -441,8 +443,7 @@ async function loadMyLendings() {
     myLendingsEl.innerHTML = "";
     merged.forEach(item => {
       const card = renderLendingCardForLender(item);
-      // attach data-id for dedupe and future reference
-      const id = item._id || item.id || (item._id && item._id.toString()) || '';
+      const id = item._id || item.id || '';
       if (id) card.dataset.id = String(id);
       myLendingsEl.appendChild(card);
     });
@@ -463,11 +464,12 @@ async function loadBorrowed() {
     const all = normalizeLendingsResponse(payload);
 
     const currentUserId = resolveCurrentUserId();
+
     const borrowed = currentUserId
       ? all.filter(l => {
-        const bid = l.borrower?._id || l.borrowerId || l.borrower;
-        return String(bid) === String(currentUserId);
-      })
+          const bid = l.borrower?._id || l.borrowerId || l.borrower;
+          return String(bid) === String(currentUserId);
+        })
       : [];
 
     if (!borrowed.length) { borrowedEl.innerHTML = "<p>No borrowed items.</p>"; return; }
