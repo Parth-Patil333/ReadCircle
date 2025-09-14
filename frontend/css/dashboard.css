@@ -4,7 +4,7 @@
   --indigo-tint: #4DB6AC;
   --grey-base: #6C757D;
   --grey-shade: #343A40;
-  --grey-tint: #CED4DA;
+  --grey-tint: #E9ECEF;
 
   --font-heading: "Roslindale SemiBold", serif;
   --font-body: "Helvetica Neue", sans-serif;
@@ -23,31 +23,34 @@ body {
   line-height: 1.6;
 }
 
-/* Topbar */
+/* === TOPBAR === */
 .topbar {
-  background: var(--indigo-shade);
-  color: #fff;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1.5rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  background: var(--indigo-base);
+  color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .brand {
   display: flex;
   align-items: center;
   font-family: var(--font-heading);
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   font-weight: bold;
 }
 
 .logo-dot {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #fff;
-  margin-right: 8px;
+  background: white;
+  margin-right: 0.5rem;
 }
 
 .userbox {
@@ -56,112 +59,140 @@ body {
   gap: 1rem;
 }
 
-.btn, .btn-ghost {
+.btn {
+  background: var(--indigo-tint);
+  color: white;
   border: none;
-  padding: 0.4rem 0.8rem;
+  padding: 0.45rem 1rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background 0.2s;
+  transition: background 0.25s ease, transform 0.2s ease;
+}
+
+.btn:hover {
+  background: var(--indigo-shade);
+  transform: translateY(-2px);
 }
 
 .btn-ghost {
   background: transparent;
-  color: #fff;
+  border: 1px solid white;
 }
 
 .btn-ghost:hover {
-  background: rgba(255,255,255,0.15);
+  background: white;
+  color: var(--indigo-base);
 }
 
-/* Hero */
+/* === HERO SECTION === */
 .hero {
-  padding: 2rem 1.5rem;
+  background: linear-gradient(135deg, var(--indigo-base), var(--indigo-tint));
+  padding: 2.5rem 2rem;
+  margin: 2rem auto;
+  border-radius: 14px;
   text-align: center;
-  border-bottom: 1px solid var(--grey-tint);
+  color: white;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  max-width: 1000px;
 }
 
-.greet {
+.hero .greet {
   font-family: var(--font-heading);
   font-size: 2rem;
   margin-bottom: 0.5rem;
-  color: var(--indigo-shade);
 }
 
-.sub {
-  font-size: 1.1rem;
-  color: var(--grey-base);
-  margin-bottom: 1.2rem;
+.hero .sub {
+  font-size: 1.05rem;
+  opacity: 0.95;
 }
 
 .quick {
+  margin-top: 1.8rem;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
 }
 
 .chip {
-  background: var(--indigo-tint);
-  color: #fff;
-  padding: 0.5rem 1.2rem;
+  background: white;
+  color: var(--indigo-base);
+  padding: 0.55rem 1.2rem;
   border-radius: 50px;
+  font-size: 0.95rem;
+  font-weight: 600;
   text-decoration: none;
-  font-size: 0.9rem;
-  transition: all 0.2s;
+  transition: 0.25s ease-in-out;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
 .chip:hover {
   background: var(--indigo-base);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-/* Grid of Cards */
+/* === GRID SECTION === */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  padding: 2rem 1.5rem;
+  gap: 2rem;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .card {
-  background: #fff;
+  background: white;
   border: 1px solid var(--grey-tint);
-  border-radius: 12px;
-  padding: 1.2rem;
+  border-radius: 14px;
+  padding: 1.5rem;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 180px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .card h3 {
   font-family: var(--font-heading);
-  color: var(--indigo-base);
   margin-bottom: 0.6rem;
+  color: var(--indigo-shade);
+  font-size: 1.2rem;
 }
 
 .card p {
   font-size: 0.95rem;
   color: var(--grey-base);
-  margin-bottom: 1rem;
+  flex-grow: 1;
 }
 
 .card .cta {
+  margin-top: 1.2rem;
   font-weight: bold;
-  color: var(--indigo-shade);
+  color: var(--indigo-base);
+  font-size: 0.95rem;
 }
 
 .card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-  border-color: var(--indigo-tint);
+  border-color: var(--indigo-base);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  transform: translateY(-5px) scale(1.02);
 }
 
-/* Footer */
+/* === FOOTER === */
 .foot {
-  padding: 1rem;
   text-align: center;
-  font-size: 0.85rem;
+  padding: 1rem;
   color: var(--grey-base);
   border-top: 1px solid var(--grey-tint);
-  margin-top: 2rem;
+  margin-top: 3rem;
+  font-size: 0.85rem;
+  background: #fafafa;
 }
