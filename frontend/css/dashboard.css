@@ -18,17 +18,19 @@
 
 body {
   font-family: var(--font-body);
-  background: #fff; /* white background */
+  background: #fff; /* White background */
   color: var(--grey-shade);
   line-height: 1.6;
   padding: 2rem;
 }
 
+/* Container */
 .container {
   max-width: 1000px;
   margin: auto;
 }
 
+/* Page title */
 .page-title {
   font-family: var(--font-heading);
   font-size: 2rem;
@@ -39,7 +41,7 @@ body {
 
 /* Card styling */
 .card {
-  background: #fff;
+  background: #fafafa; /* slight grey so it pops against white */
   border: 1px solid var(--grey-tint);
   border-radius: 0.8rem;
   padding: 1.5rem;
@@ -53,7 +55,7 @@ body {
   color: var(--indigo-base);
 }
 
-/* Form */
+/* Form layout */
 .form-grid {
   display: flex;
   flex-wrap: wrap;
@@ -74,6 +76,7 @@ input:focus {
   outline: none;
 }
 
+/* Buttons */
 .btn {
   background: var(--indigo-base);
   color: white;
@@ -118,7 +121,7 @@ input:focus {
   color: white;
 }
 
-/* Tip */
+/* Tip text */
 .tip {
   font-size: 0.85rem;
   color: var(--grey-base);
