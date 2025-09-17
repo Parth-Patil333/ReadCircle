@@ -1,52 +1,101 @@
 // controllers/notificationController.js
 const Notification = require("../models/Notification");
 
-// Get notifications for logged-in user (most recent first)
+/**
+ * GET /api/notifications
+ * Query params:
+ *  - page (default 1)
+ *  - limit (default 50, max 200)
+ *  - unreadOnly (boolean "true" to filter unread)
+ */
 const getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    const notifs = await Notification.find({ userId }).sort({ createdAt: -1 }).limit(100);
-    res.json(notifs);
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "50", 10), 1), 200);
+    const skip = (page - 1) * limit;
+
+    const filter = { user: userId }; // NOTE: model uses `user` field (not `userId`)
+    if (req.query.unreadOnly === "true") filter.read = false;
+
+    const [items, total] = await Promise.all([
+      Notification.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Notification.countDocuments(filter)
+    ]);
+
+    res.json({ items, total, page, limit });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("getNotifications error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-// Mark a single notification as read
+/**
+ * GET /api/notifications/unread-count
+ * Returns { unread: number }
+ */
+const getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const count = await Notification.countDocuments({ user: userId, read: false });
+    res.json({ unread: count });
+  } catch (err) {
+    console.error("getUnreadCount error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+/**
+ * PATCH /api/notifications/:id/read
+ * Mark a single notification as read
+ */
 const markRead = async (req, res) => {
   try {
     const userId = req.user.id;
     const id = req.params.id;
-    const notif = await Notification.findOneAndUpdate({ _id: id, userId }, { read: true }, { new: true });
+    const notif = await Notification.findOneAndUpdate(
+      { _id: id, user: userId },
+      { $set: { read: true } },
+      { new: true }
+    );
     if (!notif) return res.status(404).json({ message: "Notification not found" });
     res.json({ message: "Marked read", notif });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("markRead error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-// Mark all as read
+/**
+ * PATCH /api/notifications/read-all
+ * Mark all unread notifications for the user as read
+ */
 const markAllRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    await Notification.updateMany({ userId, read: false }, { $set: { read: true } });
+    await Notification.updateMany({ user: userId, read: false }, { $set: { read: true } });
     res.json({ message: "All notifications marked read" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("markAllRead error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-// Delete a notification
+/**
+ * DELETE /api/notifications/:id
+ * Delete a notification (user can only delete their own)
+ */
 const deleteNotification = async (req, res) => {
   try {
     const userId = req.user.id;
     const id = req.params.id;
-    const deleted = await Notification.findOneAndDelete({ _id: id, userId });
+    const deleted = await Notification.findOneAndDelete({ _id: id, user: userId });
     if (!deleted) return res.status(404).json({ message: "Notification not found" });
     res.json({ message: "Notification deleted" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("deleteNotification error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-module.exports = { getNotifications, markRead, markAllRead, deleteNotification };
+module.exports = { getNotifications, getUnreadCount, markRead, markAllRead, deleteNotification };

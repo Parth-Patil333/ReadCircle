@@ -53,7 +53,10 @@ const io = new Server(server, {
 // attach io instance to app so controllers can access with req.app.get('io')
 app.set('io', io);
 
-// Socket auth middleware: expects token in handshake.auth.token
+// make io available globally so services can emit notifications
+global.__io = io;
+
+// -------------------- Socket auth middleware: expects token in handshake.auth.token
 io.use((socket, next) => {
   try {
     const raw = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -94,6 +97,7 @@ app.use('/api/books', require('./routes/bookRoutes'));
 app.use('/api/journal', require('./routes/journalRoutes'));
 app.use('/api/habits', require('./routes/habitRoutes'));
 app.use('/api/lending', require('./routes/lendingRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes/my-lendings'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/booklisting', require('./routes/booklistingRoutes'));
@@ -122,3 +126,6 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`✅ Server + Socket.IO running on port ${PORT}`);
 });
+
+// start Day-24 background job (due date checker)
+try { require("./jobs/duedateChecker").startScheduler(); } catch (e) { /* job not found; skipping scheduler start */ }
