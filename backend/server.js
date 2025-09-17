@@ -97,7 +97,7 @@ app.use('/api/books', require('./routes/bookRoutes'));
 app.use('/api/journal', require('./routes/journalRoutes'));
 app.use('/api/habits', require('./routes/habitRoutes'));
 app.use('/api/lending', require('./routes/lendingRoutes'));
-app.use('/api/dashboard', require('./routes/dashboardRoutes/my-lendings'));
+app.use('/api/dashboard/my-lendings', require('./routes/dashboardRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/booklisting', require('./routes/booklistingRoutes'));
