@@ -102,7 +102,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/booklisting', require('./routes/booklistingRoutes'));
 app.use('/api/test', require('./routes/testRoutes')); // optional
-app.use('/api/profile', require('./routes/profile'));
+app.use('/api/profile', require('./routes/profileRoutes'));
 
 // -------------------- DB, Cron, Health --------------------
 connectDB();
