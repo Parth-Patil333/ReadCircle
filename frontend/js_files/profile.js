@@ -1,6 +1,7 @@
 // profile.js - place in /assets/js/profile.js
 // Assumes backend base (same as your other frontend files)
-const BASE_URL = (typeof BASE_URL !== 'undefined') ? BASE_URL : "https://readcircle.onrender.com/api";
+// Option A — safe, uses window.BASE_URL if available
+const BASE_URL = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
 
 // Try common storage keys for token
 function getAuthToken() {
