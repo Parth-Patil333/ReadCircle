@@ -102,6 +102,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/booklisting', require('./routes/booklistingRoutes'));
 app.use('/api/test', require('./routes/testRoutes')); // optional
+app.use('/api/profile', require('./routes/profile'));
 
 // -------------------- DB, Cron, Health --------------------
 connectDB();
@@ -114,12 +115,22 @@ app.get('/', (req, res) => {
   res.send('ReadCircle Backend is running...');
 });
 
-// -------------------- Error handler (basic) --------------------
+// -------------------- Error handler (standardized JSON) --------------------
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.message || err);
+  console.error('Unhandled error:', err && err.message ? err.message : err);
+
+  // If headers already sent, delegate to default express handler
   if (res.headersSent) return next(err);
-  res.status(500).json({ message: err.message || 'Internal Server Error' });
+
+  const status = err.status || 500;
+  res.status(status).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    // optional error code for programmatic handling by frontend
+    code: err.code || undefined
+  });
 });
+
 
 // -------------------- Start server --------------------
 const PORT = process.env.PORT || 5000;
