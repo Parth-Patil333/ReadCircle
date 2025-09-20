@@ -6,9 +6,10 @@
 
 (function () {
   // --- config ---
-  const BASE_URL = (typeof BASE_URL !== 'undefined') ? BASE_URL : (window.BASE_URL || "https://readcircle.onrender.com/api");
-  // derive socket endpoint from BASE_URL by removing trailing /api
-  const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
+  // derive BASE_URL from window if set, otherwise fall back to default
+const BASE_URL = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
+// derive socket endpoint from BASE_URL by removing trailing /api
+const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
 
   // --- auth token (same as login.js) ---
   function getToken() {
