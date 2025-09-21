@@ -159,6 +159,47 @@ if (borrowerSearch && borrowerSuggestions && borrowerIdInput) {
   });
 }
 
+// ------------------------------
+// HELPER: Load current user's books for lending form
+async function loadMyBooks() {
+  const select = document.getElementById("bookId");
+  if (!select) return; // nothing to do if no dropdown in HTML
+
+  select.innerHTML = "<option value=''>Loading...</option>";
+  try {
+    const res = await authFetch(`${API_BASE}/books`);
+    if (!res.ok) {
+      select.innerHTML = "<option value=''>Failed to load books</option>";
+      return;
+    }
+
+    // parse response (support { success, data } or raw array)
+    let data;
+    try { data = await res.json(); } catch (e) { data = null; }
+    let books = [];
+    if (Array.isArray(data)) books = data;
+    else if (data && Array.isArray(data.data)) books = data.data;
+    else {
+      const firstArr = data && Object.values(data).find(v => Array.isArray(v));
+      if (Array.isArray(firstArr)) books = firstArr;
+    }
+
+    if (!books || !books.length) {
+      select.innerHTML = "<option value=''>No books in your inventory</option>";
+      return;
+    }
+
+    select.innerHTML = books.map(b => {
+      const title = (b.title || 'Untitled').replace(/"/g, '&quot;');
+      const author = b.author ? ` — ${b.author.replace(/"/g, '&quot;')}` : '';
+      return `<option value="${b._id}">${title}${author}</option>`;
+    }).join('');
+  } catch (err) {
+    console.error('loadMyBooks error:', err);
+    select.innerHTML = "<option value=''>Error loading books</option>";
+  }
+}
+
 // js_files/lending.js — Part 2 of 3
 // ------------------------------
 // CREATE LENDING + RENDERING + LOADERS
