@@ -22,12 +22,18 @@
     </form>
 
     <h3>My Books</h3>
-    <div id="booksList" class="list-grid"></div>
+    <div id="booksList" class="list-grid">Loading...</div>
 
     <p class="back-link"><a href="dashboard.html">⬅ Back to Dashboard</a></p>
   </div>
 
+  <!-- auth helper must expose requireAuth() and authFetch() -->
   <script src="js_files/auth.js"></script>
-  <script src="js_files/test-books.js"></script>
+
+  <!-- socket.io client (optional but recommended so bookshelf can react to inventory-updated) -->
+  <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
+
+  <!-- main page logic -->
+  <script src="js_files/bookshelf.js"></script>
 </body>
 </html>

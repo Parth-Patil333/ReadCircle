@@ -1,19 +1,27 @@
 // js_files/socket.js
-// ReadCircle: minimal Socket.IO client for Buy/Sell (listings)
-// - Only listens for buy/sell/listing events
-// - Save this as frontend/js_files/socket.js
-// - Assumes login.js saved token to localStorage.token
+// ReadCircle: unified Socket.IO client
+// - Listens for marketplace (listing) events, inventory updates, lending events, and notifications.
+// - Save as frontend/js_files/socket.js
+// - Assumes login saved token to localStorage/sessionStorage under common keys (token/authToken/jwt/accessToken)
 
 (function () {
   // --- config ---
-  // derive BASE_URL from window if set, otherwise fall back to default
-const BASE_URL = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
-// derive socket endpoint from BASE_URL by removing trailing /api
-const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
+  // derive BASE_URL from window if set, otherwise default
+  const BASE_URL = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
+  // derive socket endpoint from BASE_URL by removing trailing /api
+  const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
 
-  // --- auth token (same as login.js) ---
+  // --- auth token (same logic used elsewhere) ---
   function getToken() {
-    return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
+    const keys = ['token', 'authToken', 'jwt', 'accessToken'];
+    for (const k of keys) {
+      const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+      if (v) return v;
+    }
+    // cookie fallback
+    const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    if (match) return decodeURIComponent(match[1]);
+    return null;
   }
 
   const token = getToken();
@@ -23,13 +31,14 @@ const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
     return;
   }
 
+  // ensure socket.io client lib is loaded
   if (typeof io !== 'function') {
     console.error('socket.js: socket.io client lib not loaded. Include CDN before socket.js');
     window.__rc_socket = null;
     return;
   }
 
-  // connect using handshake auth (server verifies this, your server expects handshake.auth.token)
+  // connect using handshake auth (server verifies token in handshake.auth.token)
   const socket = io(SOCKET_URL, {
     auth: { token: `Bearer ${token}` },
     transports: ['websocket'],
@@ -39,21 +48,25 @@ const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
     reconnectionDelayMax: 5000
   });
 
-  // --- event handlers for buy/sell/listings ---
-  // Event names used below are examples; match them to what backend emits.
-  // If your backend emits different event names, replace here.
+  // --- connection handlers ---
   socket.on('connect', () => {
     console.log('ReadCircle socket connected', socket.id);
   });
 
+  socket.on('disconnect', (reason) => {
+    console.warn('ReadCircle socket disconnected', reason);
+  });
+
+  socket.on('connect_error', (err) => {
+    console.error('ReadCircle socket connect_error', err && (err.message || err));
+  });
+
+  // --- Marketplace / Listing events (existing) ---
   socket.on('listing-created', (payload) => {
-    // payload: { type: 'listing-created', listingId, title, sellerId, sellerName, ... }
     console.log('listing-created', payload);
-    // call a page-level handler if present
     if (typeof window.onListingCreated === 'function') {
       try { window.onListingCreated(payload); } catch (e) { console.error(e); }
     }
-    // optional default: dispatch custom event on document for page scripts to listen
     document.dispatchEvent(new CustomEvent('rc:listing-created', { detail: payload }));
   });
 
@@ -74,7 +87,6 @@ const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
   });
 
   socket.on('purchase-made', (payload) => {
-    // payload: { type:'purchase-made', listingId, buyerId, buyerName, status, ... }
     console.log('purchase-made', payload);
     if (typeof window.onPurchaseMade === 'function') {
       try { window.onPurchaseMade(payload); } catch (e) { console.error(e); }
@@ -82,20 +94,55 @@ const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
     document.dispatchEvent(new CustomEvent('rc:purchase-made', { detail: payload }));
   });
 
-  // generic notification fallback for buy/sell channel
-  socket.on('notification', (payload) => {
-    // backend may emit generic notification events, filter for buy/sell
-    if (payload && payload.type && String(payload.type).startsWith('listing')) {
-      document.dispatchEvent(new CustomEvent('rc:notification', { detail: payload }));
+  // --- Inventory events (new) ---
+  // payload examples:
+  // { type: 'book-added', userId, book: { id, title, author } }
+  // { type: 'book-deleted', userId, bookId }
+  socket.on('inventory-updated', (payload) => {
+    console.log('inventory-updated', payload);
+    if (typeof window.onInventoryUpdated === 'function') {
+      try { window.onInventoryUpdated(payload); } catch (e) { console.error(e); }
     }
+    document.dispatchEvent(new CustomEvent('rc:inventory-updated', { detail: payload }));
   });
 
-  socket.on('disconnect', (reason) => {
-    console.warn('ReadCircle socket disconnected', reason);
+  // --- Lending events (new) ---
+  // lending:created -> { lending: { ... } }
+  // lending:updated -> { lending: { ... } }
+  // lending:deleted -> { id: '...' }
+  socket.on('lending:created', (payload) => {
+    console.log('lending:created', payload);
+    if (typeof window.onLendingCreated === 'function') {
+      try { window.onLendingCreated(payload); } catch (e) { console.error(e); }
+    }
+    document.dispatchEvent(new CustomEvent('rc:lending-created', { detail: payload }));
   });
 
-  socket.on('connect_error', (err) => {
-    console.error('ReadCircle socket connect_error', err && (err.message || err));
+  socket.on('lending:updated', (payload) => {
+    console.log('lending:updated', payload);
+    if (typeof window.onLendingUpdated === 'function') {
+      try { window.onLendingUpdated(payload); } catch (e) { console.error(e); }
+    }
+    document.dispatchEvent(new CustomEvent('rc:lending-updated', { detail: payload }));
+  });
+
+  socket.on('lending:deleted', (payload) => {
+    console.log('lending:deleted', payload);
+    if (typeof window.onLendingDeleted === 'function') {
+      try { window.onLendingDeleted(payload); } catch (e) { console.error(e); }
+    }
+    document.dispatchEvent(new CustomEvent('rc:lending-deleted', { detail: payload }));
+  });
+
+  // --- Generic notifications (already used by backend) ---
+  socket.on('notification', (payload) => {
+    console.log('notification', payload);
+    // page-level hook
+    if (typeof window.onNotification === 'function') {
+      try { window.onNotification(payload); } catch (e) { console.error(e); }
+    }
+    // dispatch a generic event for in-page handlers
+    document.dispatchEvent(new CustomEvent('rc:notification', { detail: payload }));
   });
 
   // expose socket for page scripts and debugging

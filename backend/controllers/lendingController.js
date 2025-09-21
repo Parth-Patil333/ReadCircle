@@ -5,23 +5,31 @@ const User = require('../models/User'); // if needed
 
 // Create a lending: borrower receives notification
 // PART 1: updated createLending
+// PART A: createLending (replace existing)
 const createLending = async (req, res) => {
   try {
-    const io = req.app.get('io'); // socket instance
+    const io = req.app.get('io');
     const lenderId = req.user.id;
-    const { bookTitle, borrowerId, dueDate, notes, bookId } = req.body;
+    const { bookId, borrowerId, dueDate, notes } = req.body;
 
-    if (!bookTitle || !borrowerId) {
-      return res.status(400).json({ message: 'bookTitle and borrowerId required' });
+    if (!bookId || !borrowerId) {
+      return res.status(400).json({ success: false, message: 'bookId and borrowerId required', code: 'VALIDATION_ERROR' });
     }
     if (String(borrowerId) === String(lenderId)) {
-      return res.status(400).json({ message: "You can't lend to yourself" });
+      return res.status(400).json({ success: false, message: "You can't lend to yourself", code: 'INVALID_REQUEST' });
     }
 
-    // create lending record with lender explicitly set
+    // verify book exists and belongs to lender
+    const Book = require('../models/Book');
+    const book = await Book.findOne({ _id: bookId, userId: lenderId });
+    if (!book) {
+      return res.status(403).json({ success: false, message: "You don't own this book", code: 'FORBIDDEN' });
+    }
+
+    // create lending record
     const lending = new Lending({
-      bookTitle,
-      bookId: bookId || null,
+      book: book._id,
+      bookTitle: book.title, // keep legacy for now
       lender: lenderId,
       borrower: borrowerId,
       dueDate: dueDate ? new Date(dueDate) : undefined,
@@ -30,94 +38,42 @@ const createLending = async (req, res) => {
     });
 
     await lending.save();
-
-    // populate lender & borrower for response and notifications
     await lending.populate([
-      { path: 'lender', select: 'name email' },
-      { path: 'borrower', select: 'name email' }
+      { path: 'book', select: 'title author' },
+      { path: 'lender', select: 'username name email' },
+      { path: 'borrower', select: 'username name email' }
     ]);
 
-    // create notification for borrower (persisted)
-    const actor = lenderId;
-    const borrower = borrowerId;
-    const lenderUser = await User.findById(lenderId).select('name email');
-
-    const message = `${lenderUser?.name || 'Someone'} lent you "${bookTitle}".`;
-    const notification = new Notification({
-      user: borrower,
-      actor,
+    // notification for borrower
+    const Notification = require('../models/Notification');
+    const notif = new Notification({
+      user: borrowerId,
+      actor: lenderId,
       type: 'lending_created',
-      message,
-      link: `/lending/${lending._id}` // link can be adjusted to your frontend route
+      message: `${lending.lender.username || 'Someone'} lent you "${book.title}".`,
+      link: `/lending/${lending._id}`
     });
-    const savedNotif = await notification.save();
+    const savedNotif = await notif.save();
 
-    // real-time emit: notify borrower (notification) and lender (update)
+    // realtime emit
     if (io) {
-      // send the notification payload to borrower
-      io.to(String(borrower)).emit('notification', {
+      io.to(String(borrowerId)).emit('notification', {
         _id: savedNotif._id,
         message: savedNotif.message,
         type: savedNotif.type,
         link: savedNotif.link,
         createdAt: savedNotif.createdAt,
         read: savedNotif.read,
-        actor: lenderUser ? { _id: lenderUser._id, name: lenderUser.name } : { _id: actor }
+        actor: { _id: lending.lender._id, username: lending.lender.username }
       });
 
-      // send an event to the lender so their UI can refresh immediately
-      // We emit 'lending:created' with the populated lending object.
-      io.to(String(lenderId)).emit('lending:created', {
-        lending: {
-          _id: lending._id,
-          bookTitle: lending.bookTitle,
-          bookId: lending.bookId || null,
-          lender: lending.lender,    // populated object
-          borrower: lending.borrower, // populated object
-          dueDate: lending.dueDate,
-          notes: lending.notes,
-          status: lending.status,
-          createdAt: lending.createdAt
-        }
-      });
-      // after emitting to lender
-      if (io) {
-        io.to(String(lenderId)).emit('lending:created', {
-          lending: {
-            _id: lending._id,
-            bookTitle: lending.bookTitle,
-            bookId: lending.bookId || null,
-            lender: lending.lender,
-            borrower: lending.borrower,
-            dueDate: lending.dueDate,
-            notes: lending.notes,
-            status: lending.status,
-            createdAt: lending.createdAt
-          }
-        });
-
-        // debug: log that emit was fired
-        console.log('emit lending:created to user room', String(lenderId));
-
-        // optional: log how many sockets are currently in that room (async)
-        (async () => {
-          try {
-            const sockets = await io.in(String(lenderId)).allSockets(); // Set of socket ids
-            console.log(`sockets in room ${lenderId}:`, sockets.size, Array.from(sockets).slice(0, 10));
-          } catch (err) {
-            console.warn('error listing sockets in room', err);
-          }
-        })();
-      }
-
-
+      io.to(String(lenderId)).emit('lending:created', { lending });
     }
 
-    // return populated lending to requester (lender)
-    return res.status(201).json({ lending });
+    return res.status(201).json({ success: true, data: lending });
   } catch (err) {
     console.error('createLending error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error', code: 'SERVER_ERROR' });
   }
 };
 
@@ -132,28 +88,30 @@ function emitToUser(io, userId, eventName, payload) {
 }
 
 // -------------------- replace getUserLendings --------------------
+// PART B: getUserLendings (replace existing)
 const getUserLendings = async (req, res) => {
   try {
     const userId = req.user.id;
-    // find lendings where user is lender or borrower, populate both sides
-    // and return an array directly (not wrapped in { lendings: [...] })
+
+    // find lendings where user is either lender or borrower
     const lendings = await Lending.find({
       $or: [{ lender: userId }, { borrower: userId }]
     })
-      .populate('lender', 'name email')
-      .populate('borrower', 'name email')
+      .populate('book', 'title author')                 // include book title/author
+      .populate('lender', 'username name email')        // include lender details
+      .populate('borrower', 'username name email')      // include borrower details
       .sort({ createdAt: -1 })
-      .lean(); // return plain JS objects which are easier for frontend
+      .lean();
 
-    // ensure we return an array in top-level for simplicity
-    return res.json(lendings);
+    return res.json({ success: true, data: lendings });
   } catch (err) {
     console.error('getUserLendings error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error', code: 'SERVER_ERROR' });
   }
 };
 
 // -------------------- updated markReturned --------------------
+// PART C: markReturned (replace existing)
 const markReturned = async (req, res) => {
   try {
     const io = req.app.get('io');
@@ -161,16 +119,20 @@ const markReturned = async (req, res) => {
     const { id } = req.params;
 
     const lending = await Lending.findById(id)
-      .populate('lender', 'name email')
-      .populate('borrower', 'name email');
+      .populate('book', 'title author')
+      .populate('lender', 'username name email')
+      .populate('borrower', 'username name email');
 
-    if (!lending) return res.status(404).json({ message: 'Lending not found' });
+    if (!lending) {
+      return res.status(404).json({ success: false, message: 'Lending not found', code: 'NOT_FOUND' });
+    }
 
+    // only lender can mark as returned
     if (String(lending.lender._id) !== String(userId)) {
-      return res.status(403).json({ message: 'Only lender can mark returned' });
+      return res.status(403).json({ success: false, message: 'Only lender can mark returned', code: 'FORBIDDEN' });
     }
     if (lending.status === 'returned') {
-      return res.status(400).json({ message: 'Already marked returned' });
+      return res.status(400).json({ success: false, message: 'Already marked returned', code: 'ALREADY_RETURNED' });
     }
 
     lending.status = 'returned';
@@ -178,35 +140,40 @@ const markReturned = async (req, res) => {
     await lending.save();
 
     // create a notification for the borrower
+    const Notification = require('../models/Notification');
     const notif = new Notification({
       user: lending.borrower._id,
       actor: userId,
       type: 'lending_returned',
-      message: `${lending.lender.name || 'Lender'} marked "${lending.bookTitle}" as returned.`,
+      message: `${lending.lender.username || 'Lender'} marked "${lending.book.title}" as returned.`,
       link: `/lending/${lending._id}`
     });
     const savedNotif = await notif.save();
 
     // realtime emits
-    emitToUser(io, lending.borrower._id, 'notification', {
-      _id: savedNotif._id,
-      message: savedNotif.message,
-      type: savedNotif.type,
-      link: savedNotif.link,
-      createdAt: savedNotif.createdAt,
-      read: savedNotif.read,
-      actor: { _id: userId, name: lending.lender.name }
-    });
-    emitToUser(io, lending.lender._id, 'lending:updated', { lending });
+    if (io) {
+      io.to(String(lending.borrower._id)).emit('notification', {
+        _id: savedNotif._id,
+        message: savedNotif.message,
+        type: savedNotif.type,
+        link: savedNotif.link,
+        createdAt: savedNotif.createdAt,
+        read: savedNotif.read,
+        actor: { _id: userId, username: lending.lender.username }
+      });
 
-    return res.json({ lending });
+      io.to(String(lending.lender._id)).emit('lending:updated', { lending });
+    }
+
+    return res.json({ success: true, data: lending });
   } catch (err) {
     console.error('markReturned error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error', code: 'SERVER_ERROR' });
   }
 };
 
 // -------------------- updated deleteLending --------------------
+// PART D: deleteLending (replace existing)
 const deleteLending = async (req, res) => {
   try {
     const io = req.app.get('io');
@@ -214,84 +181,100 @@ const deleteLending = async (req, res) => {
     const { id } = req.params;
 
     const lending = await Lending.findById(id)
-      .populate('lender', 'name email')
-      .populate('borrower', 'name email');
+      .populate('book', 'title author')
+      .populate('lender', 'username name email')
+      .populate('borrower', 'username name email');
 
-    if (!lending) return res.status(404).json({ message: 'Lending not found' });
+    if (!lending) {
+      return res.status(404).json({ success: false, message: 'Lending not found', code: 'NOT_FOUND' });
+    }
 
+    // only lender may delete
     if (String(lending.lender._id) !== String(userId)) {
-      return res.status(403).json({ message: 'Only lender can delete lending' });
+      return res.status(403).json({ success: false, message: 'Only lender can delete lending', code: 'FORBIDDEN' });
     }
 
     await Lending.deleteOne({ _id: id });
 
-    // optional notification to borrower
+    // create a notification for the borrower (inform them the lender removed the lending)
+    const Notification = require('../models/Notification');
     const notif = new Notification({
       user: lending.borrower._id,
       actor: userId,
       type: 'lending_deleted',
-      message: `Lending of "${lending.bookTitle}" was removed by the lender.`,
+      message: `${lending.lender.username || 'Lender'} removed the lending of "${lending.book ? lending.book.title : lending.bookTitle}".`,
       link: null
     });
     const savedNotif = await notif.save();
 
     // realtime emits
-    emitToUser(io, lending.borrower._id, 'notification', {
-      _id: savedNotif._id,
-      message: savedNotif.message,
-      type: savedNotif.type,
-      link: savedNotif.link,
-      createdAt: savedNotif.createdAt,
-      read: savedNotif.read,
-      actor: { _id: userId }
-    });
-    emitToUser(io, lending.lender._id, 'lending:deleted', { id });
+    if (io) {
+      // notify borrower (they may be viewing their lendings)
+      io.to(String(lending.borrower._id)).emit('notification', {
+        _id: savedNotif._id,
+        message: savedNotif.message,
+        type: savedNotif.type,
+        link: savedNotif.link,
+        createdAt: savedNotif.createdAt,
+        read: savedNotif.read,
+        actor: { _id: userId, username: lending.lender.username }
+      });
 
-    return res.json({ message: 'Lending deleted' });
+      // notify lender to remove from their UI
+      io.to(String(lending.lender._id)).emit('lending:deleted', { id });
+
+      // optionally notify borrower to remove from their UI as well
+      io.to(String(lending.borrower._id)).emit('lending:deleted', { id });
+    }
+
+    return res.json({ success: true, message: 'Lending deleted' });
   } catch (err) {
     console.error('deleteLending error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error', code: 'SERVER_ERROR' });
   }
 };
 
 // -------------------- updated getNotifications --------------------
+// PART E: getNotifications (replace existing)
 const getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    // get the 100 most recent notifications for this user
+
+    // fetch the 100 most recent notifications for this user
     const notifs = await Notification.find({ user: userId })
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
 
-    // normalize response: always return an array at top-level
-    return res.json({ notifications: notifs });
+    return res.json({ success: true, data: notifs });
   } catch (err) {
     console.error('getNotifications error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error', code: 'SERVER_ERROR' });
   }
 };
 
 // -------------------- updated markNotificationRead --------------------
+// PART E: markNotificationRead (replace existing)
 const markNotificationRead = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
 
     const notif = await Notification.findById(id);
-    if (!notif) return res.status(404).json({ message: 'Notification not found' });
+    if (!notif) {
+      return res.status(404).json({ success: false, message: 'Notification not found', code: 'NOT_FOUND' });
+    }
     if (String(notif.user) !== String(userId)) {
-      return res.status(403).json({ message: 'Not allowed' });
+      return res.status(403).json({ success: false, message: 'Not allowed', code: 'FORBIDDEN' });
     }
 
     notif.read = true;
     await notif.save();
 
-    // return updated notification
-    return res.json({ notification: notif });
+    return res.json({ success: true, data: notif });
   } catch (err) {
     console.error('markNotificationRead error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error', code: 'SERVER_ERROR' });
   }
 };
 
