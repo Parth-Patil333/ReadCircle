@@ -1,4 +1,4 @@
-// js_files/lending.js — UPDATED
+// js_files/lending.js — PATCHED (Part 1 of 3)
 // ------------------------------
 // Lending feature frontend: book-aware + real-time
 
@@ -25,6 +25,17 @@ function resolveCurrentUserId() {
   }
 }
 
+// helper: safely read response body (try json, fallback to text)
+async function readResponseSafe(res) {
+  if (!res) return { status: 0, ok: false, body: null };
+  let body = null;
+  try { body = await res.clone().json(); } catch (e) { /* not json */ }
+  if (body === null) {
+    try { body = await res.clone().text(); } catch (e) { body = null; }
+  }
+  return { status: res.status, ok: res.ok, body };
+}
+
 // 3) OPTIONAL robust endpoint helpers
 async function tryEndpoints(candidates, suffix = '', opts = {}) {
   let lastErr = null;
@@ -32,7 +43,7 @@ async function tryEndpoints(candidates, suffix = '', opts = {}) {
     const url = `${API_BASE}/${base}${suffix}`.replace(/([^:]\/)\/+/g, '$1');
     try {
       const res = await authFetch(url, opts);
-      if (res.status === 404) { lastErr = res; continue; }
+      if (res && res.status === 404) { lastErr = res; continue; }
       return res;
     } catch (err) {
       lastErr = err;
@@ -47,15 +58,17 @@ async function fetchLendings() {
   return tryEndpoints(ENDPOINT_BASE_CANDIDATES, '', { method: 'GET' });
 }
 
-// 4) token helper for socket
+// 4) token helper for socket — return raw token (no "Bearer " prefix)
 function getTokenForSocket() {
   try {
     if (typeof authGetToken === 'function') {
       const t = authGetToken();
-      return t ? (t.startsWith('Bearer ') ? t : `Bearer ${t}`) : null;
+      if (!t) return null;
+      return t.replace(/^Bearer\s+/i, '');
     }
   } catch (e) { /* ignore */ }
-  return localStorage.getItem('token') || null;
+  const raw = localStorage.getItem('token') || null;
+  return raw ? raw.replace(/^Bearer\s+/i, '') : null;
 }
 
 // 5) small UI helpers
@@ -200,30 +213,56 @@ async function loadMyBooks() {
   }
 }
 
-// js_files/lending.js — Part 2 of 3
+// js_files/lending.js — PATCHED (Part 2 of 3)
 // ------------------------------
 // CREATE LENDING + RENDERING + LOADERS
 
 // createLendingRequest: prefer /api/lending, fallback to /api/lendings
 async function createLendingRequest(payload) {
-  let res = await authFetch(`${API_BASE}/lending`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  // show payload in console for debugging
+  console.log('createLendingRequest payload:', payload);
 
-  if (res && res.status === 404) {
-    try {
-      res = await authFetch(`${API_BASE}/lendings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } catch (e) {
-      // keep original res
+  try {
+    let res = await authFetch(`${API_BASE}/lending`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    // if server returned 500 or similar, parse body and throw a helpful error
+    if (res && res.status >= 500) {
+      const { body } = await readResponseSafe(res);
+      console.error('Server 500 response for /lending:', body);
+      // Try fallback endpoint anyway, but keep the server error visible
+      try {
+        const fallback = await authFetch(`${API_BASE}/lendings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        return fallback;
+      } catch (e) {
+        // rethrow with server body for debugging
+        throw new Error(`Server error (500) at /lending: ${JSON.stringify(body || 'no body')}`);
+      }
     }
+
+    if (res && res.status === 404) {
+      try {
+        res = await authFetch(`${API_BASE}/lendings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.error('Fallback /lendings failed:', e);
+      }
+    }
+    return res;
+  } catch (err) {
+    console.error('createLendingRequest error:', err);
+    throw err;
   }
-  return res;
 }
 
 // Attach create form handler (uses createLendingRequest)
@@ -282,8 +321,16 @@ if (createForm) {
       let body = null;
       try { body = await res.json(); } catch (e) { body = null; }
 
+      // If server 500 returned HTML or error text, body may be string. Handle that.
       if (!res.ok || (body && body.success === false)) {
-        const msg = body && (body.message || (Array.isArray(body.errors) ? body.errors.map(x => x.msg).join('; ') : undefined)) || `Failed to create lending (status ${res.status})`;
+        const serverDetail = body && (body.message || JSON.stringify(body)) || `status ${res.status}`;
+        // If server returned 500 and body has details, show it
+        if (res.status >= 500) {
+          console.error('Server 5xx when creating lending:', res.status, body);
+          alert(`Server error: ${serverDetail}`);
+          return;
+        }
+        const msg = body && (body.message || (Array.isArray(body.errors) ? body.errors.map(x => x.msg).join('; ') : undefined)) || `Failed to create lending (${serverDetail})`;
         alert(msg);
         return;
       }
@@ -327,13 +374,18 @@ if (createForm) {
       setTimeout(() => { loadMyLendings(); loadBorrowed(); }, 800);
     } catch (err) {
       console.error('create lending error:', err);
-      alert('Failed to create lending (see console)');
+      // If err.message contains server details, show it
+      alert(err && err.message ? `Failed to create lending: ${err.message}` : 'Failed to create lending (see console)');
     }
   });
 }
 
 // ------------------------------
 // PART: normalize + render helpers
+
+// js_files/lending.js — PATCHED (Part 3 of 3)
+// ------------------------------
+// normalize + render helpers + actions + socket + init
 
 function normalizeLendingsResponse(payload) {
   if (!payload) return [];
@@ -437,6 +489,16 @@ async function loadMyLendings() {
   myLendingsEl.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending`);
+    if (!res) { myLendingsEl.innerText = "No response from server"; return; }
+
+    // Check server 500s and show details
+    if (res.status >= 500) {
+      const { body } = await readResponseSafe(res);
+      console.error('loadMyLendings server error:', res.status, body);
+      myLendingsEl.innerText = "Server error while loading lendings";
+      return;
+    }
+
     if (!res.ok) { myLendingsEl.innerText = "Failed to load lendings"; return; }
     let payload;
     try { payload = await res.json(); } catch (e) { myLendingsEl.innerText = "Invalid server response"; return; }
@@ -480,6 +542,15 @@ async function loadBorrowed() {
   borrowedEl.innerHTML = "Loading...";
   try {
     const res = await authFetch(`${API_BASE}/lending`);
+    if (!res) { borrowedEl.innerText = "No response from server"; return; }
+
+    if (res.status >= 500) {
+      const { body } = await readResponseSafe(res);
+      console.error('loadBorrowed server error:', res.status, body);
+      borrowedEl.innerText = "Server error while loading borrowed items";
+      return;
+    }
+
     if (!res.ok) { borrowedEl.innerText = "Failed to load borrowed items"; return; }
     let payload;
     try { payload = await res.json(); } catch (e) { borrowedEl.innerText = "Invalid server response"; return; }
@@ -506,8 +577,8 @@ async function loadBorrowed() {
   }
 }
 
-// js_files/lending.js — Part 3 of 3
-// ------------------------------
+// js_files/lending.js — Part 3 continued (actions & socket & init)
+
 // ACTIONS: markReturned, deleteLending, NOTIFICATIONS, SOCKET, INIT
 
 async function markReturned(id) {
@@ -521,6 +592,13 @@ async function markReturned(id) {
       res = await authFetch(`${API_BASE}/lending/return/${id}`, { method: 'POST' });
     }
     if (!res) { alert('Mark returned failed: no response from server'); return; }
+
+    if (res.status >= 500) {
+      const { body } = await readResponseSafe(res);
+      console.error('markReturned server error:', res.status, body);
+      alert(`Server error while marking returned: ${body && body.message ? body.message : JSON.stringify(body)}`);
+      return;
+    }
 
     let body = null;
     try { body = await res.json(); } catch (e) { body = null; }
@@ -548,6 +626,13 @@ async function deleteLending(id) {
     const res = await authFetch(`${API_BASE}/lending/${id}`, { method: 'DELETE' });
     if (!res) { alert('Delete failed: no response from server'); return; }
 
+    if (res.status >= 500) {
+      const { body } = await readResponseSafe(res);
+      console.error('deleteLending server error:', res.status, body);
+      alert(`Server error while deleting: ${body && body.message ? body.message : JSON.stringify(body)}`);
+      return;
+    }
+
     let body = null;
     try { body = await res.json(); } catch (e) { body = null; }
 
@@ -568,7 +653,6 @@ async function deleteLending(id) {
 
 // ------------------------------
 // NOTIFICATIONS UI + helpers
-
 function renderNotifications() {
   if (!notifList) return;
   if (!notifications || !notifications.length) {
