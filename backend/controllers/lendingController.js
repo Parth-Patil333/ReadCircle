@@ -64,7 +64,7 @@ const createLending = async (req, res) => {
     }
 
     // Look up book by id first, then confirm ownership in a flexible way
-    const Book = require('../models/Book');
+    const Book = require('../models/Books');
     const book = await Book.findById(bookId).lean();
     if (!book) {
       return res.status(404).json({ success: false, message: 'Book not found', code: 'NOT_FOUND' });
