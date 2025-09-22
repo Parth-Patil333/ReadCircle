@@ -11,20 +11,23 @@ const {
 } = require('../controllers/lendingController');
 
 // Create lending
+// routes/lendingRoutes.js — replace POST block with:
 router.post('/',
   auth,
-  [
-    body('bookId').notEmpty().withMessage('bookId is required'),
-    body('borrowerId').notEmpty().withMessage('borrowerId is required')
-  ],
   (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, message: 'Validation error', errors: errors.array(), code: 'VALIDATION_ERROR' });
+    // allow either bookId or bookTitle; borrowerId required
+    const { bookId, bookTitle, borrowerId } = req.body || {};
+    if (!borrowerId) {
+      return res.status(400).json({ success: false, message: 'borrowerId is required', code: 'VALIDATION_ERROR' });
     }
-    return createLending(req, res, next);
-  }
+    if (!bookId && !bookTitle) {
+      return res.status(400).json({ success: false, message: 'Either bookId or bookTitle is required', code: 'VALIDATION_ERROR' });
+    }
+    return next();
+  },
+  createLending
 );
+
 
 // Get lendings for logged-in user
 router.get('/', auth, getUserLendings);
