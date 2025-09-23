@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Create Listing — ReadCircle</title>
   <link rel="stylesheet" href="css/create_listing.css" />
 </head>
+
 <body>
   <div class="container">
     <h1>Create a Book Listing</h1>
@@ -48,7 +50,8 @@
       <div class="preview" id="imagePreview"></div>
 
       <label for="sellerContact">Your contact (phone or email)</label>
-      <input id="sellerContact" name="sellerContact" type="text" placeholder="You will be contacted by buyer after reservation" />
+      <input id="sellerContact" name="sellerContact" type="text"
+        placeholder="You will be contacted by buyer after reservation" />
 
       <div class="actions">
         <button id="createBtn" type="submit">Create Listing</button>
@@ -59,9 +62,7 @@
   </div>
 
   <!-- socket.io client -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
-    integrity="sha384-H6q2z+TeR6m+J3gVbP8r5k6Q9YF4W2u2qkYf6b3Gkq0w3i5TZ3G7QK+pNQv8s3wK"
-    crossorigin="anonymous"></script>
+  <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
 
   <!-- include auth.js (must exist) -->
   <script src="js_files/auth.js"></script>
@@ -72,4 +73,5 @@
   <!-- realtime toast notifications -->
   <script src="js_files/notification_socket.js"></script>
 </body>
+
 </html>

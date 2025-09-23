@@ -11,7 +11,7 @@
   function getTokenFallback() {
     try {
       if (typeof window.getToken === 'function') return window.getToken();
-    } catch (e) {}
+    } catch (e) { }
     try {
       return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
     } catch (e) { return null; }
@@ -124,7 +124,10 @@
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch (e) { data = { raw: text }; }
+      console.log('Create listing response:', res.status, data);
       if (!res.ok) {
         const message = (data && data.message) || (data && data.error) || 'Failed to create listing';
         statusText.innerText = `Error: ${message}`;
