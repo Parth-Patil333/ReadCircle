@@ -1,4 +1,4 @@
-// js_files/seller.js (fixed)
+// js_files/seller.js
 // Create Listing page logic for ReadCircle
 // Expects: auth.js to provide getToken() and optionally authFetch()
 // If authFetch not present, a small fallback is provided.
@@ -8,10 +8,11 @@
   const LISTING_ENDPOINT = `${API_BASE}/booklisting`;
 
   // Fallback small auth helpers if your auth.js doesn't export them
+  // If you already have authFetch/getToken in your auth.js, they will be used.
   function getTokenFallback() {
+    // try cookies or localStorage by convention used in your project
     try {
-      // prefer a global getToken() if authored by your auth.js
-      if (typeof window.getToken === 'function') return window.getToken();
+      if (typeof getToken === 'function') return getToken(); // if auth.js provided it
     } catch (e) {}
     try {
       const t = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -21,7 +22,7 @@
 
   // small authFetch wrapper if none present
   async function authFetchFallback(url, opts = {}) {
-    const token = authGetToken();
+    const token = getTokenFallback();
     const headers = opts.headers || {};
     headers['Content-Type'] = headers['Content-Type'] || 'application/json';
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -29,9 +30,9 @@
     return fetch(url, opts);
   }
 
-  // Use auth-provided helpers if available on window, else use fallback
-  const authGetToken = (typeof window.getToken === 'function') ? window.getToken : getTokenFallback;
-  const authFetchFn = (typeof window.authFetch === 'function') ? window.authFetch : authFetchFallback;
+  // Use auth-provided helpers if available
+  const authGetToken = (typeof getToken === 'function') ? getToken : getTokenFallback;
+  const authFetch = (typeof authFetch === 'function') ? authFetch : authFetchFallback;
 
   // DOM
   const form = document.getElementById('createListingForm');
@@ -53,6 +54,7 @@
     try {
       const token = authGetToken();
       if (!token) return console.warn('seller.js: no auth token found; sockets disabled');
+      // connect with token in handshake.auth.token
       socket = io(window.SOCKET_URL || (new URL(API_BASE).origin), {
         auth: { token: `Bearer ${token}` },
         transports: ['websocket', 'polling']
@@ -65,8 +67,10 @@
         console.warn('Socket connect error:', err && err.message ? err.message : err);
       });
 
+      // optionally listen to listing related events
       socket.on('listing_reserved', (payload) => {
         console.log('listing_reserved:', payload);
+        // If seller is notified about their listing, you may show a toast here.
       });
 
       socket.on('listing_confirmed', (payload) => {
@@ -76,6 +80,7 @@
       socket.on('listing_updated', (payload) => {
         console.log('listing_updated:', payload);
       });
+
     } catch (e) {
       console.warn('Socket setup failed:', e);
     }
@@ -83,7 +88,6 @@
 
   // Image preview helper — accepts comma separated URLs
   function renderImagePreview() {
-    if (!imagePreview) return;
     imagePreview.innerHTML = '';
     const raw = imagesEl.value || '';
     const urls = raw.split(',').map(s => s.trim()).filter(Boolean);
@@ -93,12 +97,6 @@
       img.onerror = () => img.style.opacity = '0.4';
       imagePreview.appendChild(img);
     });
-  }
-
-  // Defensive DOM readiness: bail early if required elements missing
-  if (!form) {
-    console.warn('seller.js: form element createListingForm not found on this page.');
-    return;
   }
 
   imagesEl.addEventListener('input', renderImagePreview);
@@ -136,7 +134,7 @@
     };
 
     try {
-      const res = await authFetchFn(LISTING_ENDPOINT, {
+      const res = await authFetch(LISTING_ENDPOINT, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
@@ -149,10 +147,14 @@
         return;
       }
 
+      // Success
       statusText.innerText = 'Listing created ✅';
+      // optionally navigate to listings page:
       setTimeout(() => {
-        window.location.href = window.LISTINGS_PAGE || 'listing.html';
+        // prefer client app routing — fallback open listings page
+        window.location.href = window.LISTINGS_PAGE || '/html_files/listings.html';
       }, 800);
+
     } catch (err) {
       console.error('create listing error', err);
       statusText.innerText = 'Error creating listing (network)';
