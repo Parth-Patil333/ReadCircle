@@ -1,36 +1,24 @@
+// routes/booklistingRoutes.js
 const express = require('express');
 const router = express.Router();
-const {
-  addListing,
-  getListings,
-  updateListing,
-  deleteListing,
-  confirmListing,
-  cancelListing,
-  cleanupListings
-} = require('../controllers/booklistingController');
-const auth = require("../middleware/auth");
 
-// Add listing
-router.post('/', auth, addListing);
+const controller = require('../controllers/booklistingController');
 
-// Get all available listings
-router.get('/', auth, getListings);
+// Auth middleware (your provided file: middleware/auth.js)
+const requireAuth = require('../middleware/auth');
 
-// Update listing
-router.put('/:id', auth, updateListing);
+// Public
+router.get('/', controller.getListings);
+router.get('/:id', controller.getListing);
 
-// Delete listing
-router.delete('/:id', auth, deleteListing);
+// Protected (create / modify / reservation flows)
+router.post('/', requireAuth, controller.createListing);
+router.patch('/:id', requireAuth, controller.updateListing);
+router.delete('/:id', requireAuth, controller.deleteListing);
 
-// Confirm listing
-router.put('/:id/confirm', auth, confirmListing);
-
-// Cancel confirmed listing
-router.put('/:id/cancel', auth, cancelListing);
-
-// Manual cleanup trigger
-router.delete("/cleanup", auth, cleanupListings);
-
+// Reservation / confirm / cancel
+router.post('/:id/reserve', requireAuth, controller.reserveListing);
+router.post('/:id/confirm', requireAuth, controller.confirmSale);
+router.post('/:id/cancel', requireAuth, controller.cancelReservation);
 
 module.exports = router;

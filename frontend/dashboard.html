@@ -54,6 +54,7 @@
         <a href="bookshelf.html" class="chip">Bookshelf</a>
         <a href="habits.html" class="chip">Habits</a>
         <a href="lending.html" class="chip">Lending</a>
+        <a href="create_listing.html" class="chip">Create Listing</a>
         <a href="listing.html" class="chip">Listings</a>
       </div>
     </section>
@@ -83,6 +84,12 @@
         <span class="cta">Open →</span>
       </a>
 
+      <a class="card" href="create_listing.html">
+        <h3>Create Listing</h3>
+        <p>Post a book for sale: title, condition, price, and contact — easy demo-ready flow.</p>
+        <span class="cta">Open →</span>
+      </a>
+
       <a class="card" href="listing.html">
         <h3>Listings</h3>
         <p>Sell or buy books; confirmations and 48-hour cleanup built in.</p>
@@ -96,7 +103,7 @@
   </footer>
 
   <!-- Put this above your existing <script src="js_files/dashboard.js"></script> -->
-    <!-- Socket.IO client library -->
+  <!-- Socket.IO client library -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
     integrity="sha384-+4Qf7gWQ6i7YvC6q3sZ1Xg6E3bZqfZrZ7Q0kM5X2k3F1wzjB1h3Q8Xwq8Yk9c2Nk"
     crossorigin="anonymous"></script>
@@ -107,7 +114,11 @@
   <!-- Auth helpers (token handling, etc.) -->
   <script src="js_files/auth.js"></script>
 
+  <!-- realtime toast notifications (new) -->
+  <script src="js_files/notifications_socket.js"></script>
+  
   <!-- Dashboard-specific logic -->
   <script src="js_files/dashboard.js"></script>
 </body>
+
 </html>

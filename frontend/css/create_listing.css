@@ -1,0 +1,101 @@
+/* create_listing.css */
+
+body {
+  font-family: Inter, system-ui, Arial;
+  background: #f7f9fb;
+  color: #222;
+  padding: 20px;
+}
+
+.container {
+  max-width: 760px;
+  margin: 18px auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(20, 30, 60, 0.08);
+  padding: 20px;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0 0 12px 0;
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7dbe0;
+  border-radius: 6px;
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.two-col {
+  display: flex;
+  gap: 12px;
+}
+
+.two-col > * {
+  flex: 1;
+}
+
+.hint {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 6px;
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+button {
+  background: #008080;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #6c757d;
+}
+
+.status {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.preview {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview img {
+  width: 96px;
+  height: 128px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}

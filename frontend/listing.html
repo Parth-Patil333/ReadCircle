@@ -1,37 +1,52 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>Book Selling & Buying Test</title>
-  <link rel="stylesheet" href="css/listing.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Listings — ReadCircle</title>
+  <link rel="stylesheet" href="../css/listings.css" />
 </head>
 <body>
-  <div class="container">
-    <h2>Add Book Listing</h2>
-    <form id="listingForm" class="form-box">
-      <input type="text" id="title" placeholder="Book Title" required>
-      <input type="text" id="author" placeholder="Author">
-      
-      <select id="condition">
-        <option value="New">New</option>
-        <option value="Good">Good</option>
-        <option value="Fair">Fair</option>
-        <option value="Poor">Poor</option>
-      </select>
+  <div class="page">
+    <header class="topbar">
+      <h1>Book Listings</h1>
+      <div class="controls">
+        <input id="searchInput" placeholder="Search title/author..." />
+        <select id="conditionFilter">
+          <option value="">All conditions</option>
+          <option>New</option>
+          <option>Like New</option>
+          <option>Good</option>
+          <option>Fair</option>
+          <option>Poor</option>
+        </select>
+        <button id="refreshBtn">Refresh</button>
+      </div>
+    </header>
 
-      <input type="text" id="sellerName" placeholder="Seller Name" required>
-      <input type="text" id="sellerContact" placeholder="Contact" required>
-      <input type="text" id="sellerAddress" placeholder="Address" required>
+    <main>
+      <div id="listingsGrid" class="grid"></div>
 
-      <button type="submit" class="btn">Add Listing</button>
-    </form>
-
-    <h2>Available Listings</h2>
-    <button onclick="loadListings()" class="btn secondary">Load Listings</button>
-    <ul id="listingList" class="list-box"></ul>
-    <button onclick="cleanupListings()" class="btn secondary">Run Cleanup</button>
+      <div class="pager">
+        <button id="prevPage">Prev</button>
+        <span id="pageInfo">Page 1</span>
+        <button id="nextPage">Next</button>
+      </div>
+    </main>
   </div>
-  
+
+    <!-- socket.io -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+    integrity="sha384-H6q2z+TeR6m+J3gVbP8r5k6Q9YF4W2u2qkYf6b3Gkq0w3i5TZ3G7QK+pNQv8s3wK"
+    crossorigin="anonymous"></script>
+
+  <!-- auth helpers -->
   <script src="js_files/auth.js"></script>
-  <script src="js_files/listing.js"></script>
+
+  <!-- buyer logic -->
+  <script src="js_files/buyer.js"></script>
+
+  <!-- realtime toast notifications -->
+  <script src="js_files/notification_socket.js"></script>
 </body>
 </html>

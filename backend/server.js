@@ -76,15 +76,23 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   const uid = String(socket.userId || socket.user?.id || '');
   if (uid) {
-    // join a room for this user so server can emit to io.to(uid)
-    socket.join(uid);
-    console.log(`Socket connected: ${socket.id} (user ${uid})`);
+    // Keep backward compatibility for existing code that used raw uid rooms
+    socket.join(uid);               // existing lending code expects this
+
+    // New convention for notify helper
+    socket.join(`user_${uid}`);
+
+    // Shared room for listing updates / new-listing events
+    socket.join('listings');
+
+    console.log(`Socket connected: ${socket.id} (user ${uid}) -> joined rooms: ${uid}, user_${uid}, listings`);
   } else {
-    console.log(`Socket connected: ${socket.id} (no user id)`);
+    // allow unauthenticated viewers to receive public listing broadcasts
+    socket.join('listings');
+    console.log(`Socket connected: ${socket.id} (no user id) -> joined listings`);
   }
 
   socket.on('disconnect', (reason) => {
-    // cleanup if needed
     console.log(`Socket disconnected: ${socket.id} (${reason})`);
   });
 });

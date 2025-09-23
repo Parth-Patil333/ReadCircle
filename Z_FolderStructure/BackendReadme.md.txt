@@ -1,37 +1,58 @@
 readcircle-backend/
-├── controllers/                    # Handles actual logic
-│   ├── authController.js
-│   ├── bookController.js
-│   ├── journalController.js
-│   ├── habitController.js
-│   ├── lendingController.js
-│   └── marketplaceController.js    # Buy/Sell logic (seller & buyer actions)
-
-├── models/                         # Mongoose schemas
-│   ├── User.js                     # For login (admin1, admin2)
-│   ├── Book.js                     # Bookshelf entries
-│   ├── JournalEntry.js             # Daily logs
-│   ├── Habit.js                    # Streaks & goals
-│   ├── Lending.js                  # Lending/return system
-│   └── Listing.js                  # For marketplace book selling
-
-├── routes/                         # API routes
-│   ├── authRoutes.js
-│   ├── bookRoutes.js
-│   ├── journalRoutes.js
-│   ├── habitRoutes.js
-│   ├── lendingRoutes.js
-│   └── marketplaceRoutes.js
 
 ├── config/
 │   └── db.js                       # MongoDB Atlas connection
 
+├── controllers/                    # Handles actual logic
+│   ├── authController.js
+│   ├── bookController.js
+│   ├── booklistingController.js
+│   ├── dashboardController.js
+│   ├── habitController.js
+│   ├── journalController.js
+│   ├── notificationController.js
+│   ├── profileController.js
+│   ├── lendingController.js
+│   └── userController.js
+
+├── cron/                         
+│   ├── cleanup.js
+
+├── jobs/                         
+│   ├── duedateChecker.js
+
 ├── middleware/
 │   └── authMiddleware.js           # (Optional) Protect routes using token or session
 
+├── models/                         # Mongoose schemas
+│   ├── BookListing.js
+│   ├── Book.js                     # Bookshelf entries
+│   ├── Habit.js                    # Streaks & goals
+│   ├── JournalEntry.js             # Daily logs
+│   ├── Lending.js                  # Lending/return system
+│   ├── Notification.js
+│   ├── test.js
+│   ├── User.js                     # For login (admin1, admin2)
+
+├── node_modules/ 
+
+├── routes/                         # API routes
+│   ├── authRoutes.js
+│   ├── booklisting.js
+│   ├── bookRoutes.js
+│   ├── dashboardRoutes.js
+│   ├── habitRoutes.js
+│   ├── journalRoutes.js
+│   ├── lendingRoutes.js
+│   ├── notificationRoutes.js
+│   ├── profileRoutes.js
+│   ├── testRoutes.js
+│   └── userRoutes.js
+
+
+
 ├── utils/
-│   └── email.js                    # (Optional) For sending notification emails to seller
-│   └── timerCheck.js               # (Optional) 48-hour post expiration checker
+│   ├── notify.js
 
 ├── .env                            # Environment config (MONGO_URI, PORT)
 ├── .gitignore                      # Ignore node_modules, .env, etc.

@@ -1,31 +1,127 @@
 // utils/notify.js
 /**
- * Notify a specific user via Socket.IO
+ * Centralized notifier for ReadCircle (socket emits)
  *
- * @param {String|ObjectId} userId - The user's ID (must match the room joined in server.js)
- * @param {Object} payload - The notification data (must be JSON-serializable)
- *   Example: { type: 'lending_request', message: '...', data: {...} }
- * @param {Object} [app] - Optional Express app instance (to get io if global.__io is not used)
+ * Backwards-compatible:
+ * - Emits to both raw userId rooms (e.g. "605...") and prefixed rooms ("user_605...")
+ *   so older code which uses io.to(String(userId)) still works, while newer code
+ *   can use notify.user(...) and rely on user_<id> convention.
  *
- * @returns {Boolean} true if emitted successfully, false otherwise
+ * Usage:
+ *   const notify = require('../utils/notify');
+ *   notify.user(req, userId, 'listing_reserved', { listingId, ... });
+ *   notify.broadcastListings(req, 'new-listing', listingObject);
+ *
+ * The functions accept an optional first argument that can be `req` (so controllers
+ * can call notify.user(req, ...) and the helper will fetch io from req.app.get('io')).
  */
-module.exports = function notify(userId, payload, app) {
-  try {
-    if (!userId) {
-      console.error("notify: userId required");
-      return false;
-    }
 
-    const io = app && app.get ? app.get("io") : global.__io;
-    if (!io) {
-      console.error("notify: Socket.IO instance not found");
-      return false;
-    }
+function _getIo(appOrReq) {
+  // allow either passing req (with app.get) or null
+  if (appOrReq && appOrReq.app && typeof appOrReq.app.get === 'function') {
+    const io = appOrReq.app.get('io');
+    if (io) return io;
+  }
+  // fallback to global
+  if (global && global.__io) return global.__io;
+  return null;
+}
 
-    io.to(String(userId)).emit("notification", payload);
-    return true;
-  } catch (e) {
-    console.error("notify error:", e);
-    return false;
+function rawRoom(userId) {
+  if (!userId) return null;
+  return String(userId);
+}
+function prefixedRoom(userId) {
+  if (!userId) return null;
+  return `user_${String(userId)}`;
+}
+
+module.exports = {
+  /**
+   * Send event to a single user.
+   * Accepts either:
+   *  - notify.user(req, userId, event, payload)
+   *  - notify.user(userId, event, payload)
+   *
+   * It will attempt to emit to both rawRoom(userId) and prefixedRoom(userId).
+   */
+  user(appOrReq, userId, event, payload) {
+    try {
+      // Normalize arguments: support calling without req
+      if (arguments.length === 3) {
+        // notify.user(userId, event, payload) where payload is undefined
+        payload = event;
+        event = userId;
+        userId = appOrReq;
+        appOrReq = null;
+      } else if (arguments.length === 4 && appOrReq && typeof appOrReq === 'string') {
+        // notify.user(userId, event, payload)
+        // already in that shape; shift variables accordingly
+      }
+
+      // if someone called notify.user(req, userId, event, payload) then appOrReq is req
+      const io = _getIo(appOrReq);
+      if (!io) {
+        console.warn('notify.user: no io available — skipping emit', event, userId);
+        return;
+      }
+
+      const uRaw = rawRoom(userId);
+      const uPref = prefixedRoom(userId);
+
+      // Emit to raw room for backward compatibility (many existing parts may join raw uid)
+      if (uRaw) {
+        try {
+          io.to(uRaw).emit(event, payload);
+        } catch (err) {
+          console.warn('notify.user: emit to raw room failed', uRaw, err && err.message ? err.message : err);
+        }
+      }
+
+      // Emit to prefixed room (newer convention)
+      if (uPref) {
+        try {
+          io.to(uPref).emit(event, payload);
+        } catch (err) {
+          console.warn('notify.user: emit to prefixed room failed', uPref, err && err.message ? err.message : err);
+        }
+      }
+    } catch (err) {
+      console.error('notify.user error', err);
+    }
+  },
+
+  /**
+   * Broadcast to all listing watchers (joined to 'listings' room)
+   * notify.broadcastListings(req, 'new-listing', payload)
+   */
+  broadcastListings(appOrReq, event, payload) {
+    try {
+      const io = _getIo(appOrReq);
+      if (!io) {
+        console.warn('notify.broadcastListings: no io — skipping');
+        return;
+      }
+      io.to('listings').emit(event, payload);
+    } catch (err) {
+      console.error('notify.broadcastListings error', err);
+    }
+  },
+
+  /**
+   * Broadcast to a raw room name (advanced)
+   * notify.room(req, 'admin_room', 'some_event', payload)
+   */
+  room(appOrReq, roomName, event, payload) {
+    try {
+      const io = _getIo(appOrReq);
+      if (!io) {
+        console.warn('notify.room: no io — skipping');
+        return;
+      }
+      io.to(roomName).emit(event, payload);
+    } catch (err) {
+      console.error('notify.room error', err);
+    }
   }
 };
