@@ -60,18 +60,27 @@
       </div>
     </form>
   </div>
-  <!-- include auth.js (must exist) -->
-  <script src="js_files/auth.js"></script>
+
+  <script>
+    // exact backend origin serving Socket.IO (set to your Render/Heroku/own host)
+    // replace with your backend origin if different
+    window.SOCKET_URL = "https://readcircle.onrender.com";
+    // if you also have an API_BASE override, ensure that either window.BASE_URL or window.SOCKET_URL is correct
+    // window.BASE_URL = "https://readcircle.onrender.com/api";
+  </script>
 
   <!-- socket.io client -->
   <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
 
+  <!-- include auth.js (must exist) -->
+  <script src="js_files/auth.js"></script>
 
-  <!-- seller script -->
-  <script src="js_files/seller.js"></script>
 
   <!-- realtime toast notifications -->
   <script src="js_files/notification_socket.js"></script>
+
+  <!-- seller script -->
+  <script src="js_files/seller.js"></script>
 </body>
 
 </html>
