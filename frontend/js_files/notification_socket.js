@@ -1,24 +1,9 @@
-// js_files/notifications.js
-// Simple notifications module for ReadCircle
-// - Connects to socket with token (reads from getToken() or localStorage)
-// - Shows simple toasts on events
-// - Exposes connectNotifications() if you want to call manually
+// js_files/notification_socket.js
+// Safe notifications socket helper — reuses existing window.__rc_socket if present,
+// otherwise creates its own socket (after auth.js loaded).
 
 (function () {
-  const API_BASE = window.API_BASE || "https://readcircle.onrender.com/api";
-  const ORIGIN = window.SOCKET_URL || (new URL(API_BASE).origin);
-
-  // token helper: attempts getToken() then localStorage/sessionStorage
-  function getTokenLocal() {
-    try {
-      if (typeof getToken === 'function') return getToken();
-    } catch (e) {}
-    try {
-      return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
-    } catch (e) { return null; }
-  }
-
-  // simple toast implementation
+  // Small toast helper (keeps styling inline so no external CSS required)
   function createToast(text, opts = {}) {
     const containerId = 'rc_toast_container';
     let container = document.getElementById(containerId);
@@ -50,67 +35,84 @@
     }, opts.timeout || 4000);
   }
 
-  let socket = null;
-
-  function connectNotifications() {
+  // get token helper (uses auth.js getToken if available)
+  function getTokenLocal() {
     try {
-      const token = getTokenLocal();
-      if (!token) {
-        // Not logged in — still create a socket-less notification experience? skip.
-        return console.warn('notifications: no token, not connecting socket');
-      }
+      if (typeof window.getToken === 'function') return window.getToken();
+    } catch (e) {}
+    try {
+      return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
+    } catch (e) { return null; }
+  }
 
-      socket = io(ORIGIN, {
-        auth: { token: `Bearer ${token}` },
-        transports: ['websocket', 'polling']
-      });
+  // The main connect logic; will reuse window.__rc_socket if present
+  function ensureSocket() {
+    // If a global socket already exists (socket.js created it), reuse it
+    if (window.__rc_socket && typeof window.__rc_socket.on === 'function') {
+      return window.__rc_socket;
+    }
 
-      socket.on('connect', () => {
-        console.log('notifications: socket connected', socket.id);
-      });
+    // Otherwise attempt to create one here (defensive)
+    if (typeof io !== 'function') {
+      console.warn('notifications_socket: socket.io client not loaded; skipping auto-connect');
+      return null;
+    }
 
-      socket.on('connect_error', (err) => {
-        console.warn('notifications: connect_error', err && err.message ? err.message : err);
-      });
+    const token = getTokenLocal();
+    if (!token) {
+      console.warn('notifications_socket: no auth token found; not connecting socket');
+      return null;
+    }
 
-      // IMPORTANT events to listen for
-      socket.on('new-listing', (payload) => {
-        createToast('New listing added: ' + (payload.title || 'Untitled'));
-      });
+    // Derive origin from current location or optional window.SOCKET_URL
+    const origin = window.SOCKET_URL || (window.location.origin);
 
-      socket.on('listing_reserved', (payload) => {
-        createToast('Your listing was reserved' + (payload.listingId ? ` (${payload.listingId})` : ''));
-      });
-
-      socket.on('listing_confirmed', (payload) => {
-        createToast('A listing reservation was confirmed' + (payload.listingId ? ` (${payload.listingId})` : ''));
-      });
-
-      socket.on('listing_updated', (payload) => {
-        // lightweight notification for updates
-        createToast('Listing updated' + (payload.title ? `: ${payload.title}` : ''));
-      });
-
-      socket.on('listing_deleted', (payload) => {
-        createToast('A listing was removed');
-      });
-
-      // expose socket for debugging
-      window.__rc_socket = socket;
+    try {
+      const s = io(origin, { auth: { token: `Bearer ${token}` }, transports: ['websocket', 'polling'] });
+      // attach to window so other scripts can reuse
+      window.__rc_socket = s;
+      return s;
     } catch (err) {
-      console.warn('notifications.connect failed', err);
+      console.warn('notifications_socket: failed to create socket', err);
+      return null;
     }
   }
 
-  // Auto-connect when script loads (if desired)
-  if (typeof window !== 'undefined') {
-    // Try to auto-connect but don't crash
-    try { connectNotifications(); } catch (e) { /* ignore */ }
-  }
+  const socket = ensureSocket();
+  if (!socket) return;
 
-  // Expose for manual control
+  // show connection in console
+  socket.on('connect', () => {
+    console.log('notifications: socket connected', socket.id);
+  });
+
+  socket.on('connect_error', (err) => {
+    console.warn('notifications: connect_error', err && err.message ? err.message : err);
+  });
+
+  // listen for the events we expect (the server emits names like listing_reserved etc.)
+  socket.on('new-listing', (payload) => {
+    createToast('New listing: ' + (payload.title || 'Untitled'));
+  });
+
+  socket.on('listing_reserved', (payload) => {
+    createToast('Listing reserved' + (payload.listingId ? ` (${payload.listingId})` : ''));
+  });
+
+  socket.on('listing_confirmed', (payload) => {
+    createToast('Reservation confirmed' + (payload.listingId ? ` (${payload.listingId})` : ''));
+  });
+
+  socket.on('listing_updated', (payload) => {
+    createToast('Listing updated' + (payload.title ? `: ${payload.title}` : ''));
+  });
+
+  socket.on('listing_deleted', () => {
+    createToast('A listing was removed');
+  });
+
+  // make available for debugging
   window.ReadCircleNotifications = {
-    connect: connectNotifications,
     getSocket: () => socket
   };
 })();

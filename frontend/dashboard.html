@@ -102,21 +102,20 @@
     <span>© ReadCircle</span>
   </footer>
 
-  <!-- Put this above your existing <script src="js_files/dashboard.js"></script> -->
-  <!-- Socket.IO client library -->
   <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
-
-  <!-- ReadCircle socket connection -->
-  <script src="js_files/socket.js"></script>
 
   <!-- Auth helpers (token handling, etc.) -->
   <script src="js_files/auth.js"></script>
 
-  <!-- realtime toast notifications (new) -->
+  <!-- ReadCircle unified socket client (connects once and attaches window.__rc_socket) -->
+  <script src="js_files/socket.js"></script>
+
+  <!-- realtime toast notifications (uses existing socket if present) -->
   <script src="js_files/notification_socket.js"></script>
 
   <!-- Dashboard-specific logic -->
   <script src="js_files/dashboard.js"></script>
+
 </body>
 
 </html>
