@@ -7,9 +7,23 @@
 (function () {
   // --- config ---
   // derive BASE_URL from window if set, otherwise default
+  // --- config (update / paste at top of js_files/socket.js) ---
   const BASE_URL = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
-  // derive socket endpoint from BASE_URL by removing trailing /api
-  const SOCKET_URL = String(BASE_URL).replace(/\/api\/?$/, '');
+  // Prefer explicit override, otherwise derive from BASE_URL; fallback to current origin
+  const SOCKET_URL = window.SOCKET_URL || (String(BASE_URL).replace(/\/api\/?$/, '')) || window.location.origin;
+
+  // Connection options - keep reconnection attempts bounded during testing
+  const socketOptions = {
+    auth: { token: `Bearer ${(function () { try { return (localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (e) { return ''; } })()}` },
+    transports: ['websocket'],
+    autoConnect: true,
+    reconnectionAttempts: 8,        // stop retrying after X attempts
+    reconnectionDelay: 1000,        // ms
+    reconnectionDelayMax: 5000
+  };
+
+  // then later where you call io(...), use:
+  // const socket = io(SOCKET_URL, socketOptions);
 
   // --- auth token (same logic used elsewhere) ---
   function getToken() {
