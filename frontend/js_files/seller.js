@@ -1,28 +1,25 @@
-// js_files/seller.js
+// js_files/seller.js (fixed)
 // Create Listing page logic for ReadCircle
-// Expects: auth.js to provide getToken() and optionally authFetch()
-// If authFetch not present, a small fallback is provided.
+// Expects: auth.js to provide window.getToken() and optionally window.authFetch()
+// If not present, falls back to localStorage token and a simple authFetch wrapper.
 
 (function () {
-  const API_BASE = window.API_BASE || "https://readcircle.onrender.com/api"; // override if needed
+  const API_BASE = window.API_BASE || "https://readcircle.onrender.com/api";
   const LISTING_ENDPOINT = `${API_BASE}/booklisting`;
 
-  // Fallback small auth helpers if your auth.js doesn't export them
-  // If you already have authFetch/getToken in your auth.js, they will be used.
+  // Fallback token getter
   function getTokenFallback() {
-    // try cookies or localStorage by convention used in your project
     try {
-      if (typeof getToken === 'function') return getToken(); // if auth.js provided it
+      if (typeof window.getToken === 'function') return window.getToken();
     } catch (e) {}
     try {
-      const t = localStorage.getItem('token') || sessionStorage.getItem('token');
-      return t || null;
+      return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
     } catch (e) { return null; }
   }
 
-  // small authFetch wrapper if none present
+  // Fallback authFetch that attaches Authorization header
   async function authFetchFallback(url, opts = {}) {
-    const token = getTokenFallback();
+    const token = authGetToken();
     const headers = opts.headers || {};
     headers['Content-Type'] = headers['Content-Type'] || 'application/json';
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -30,11 +27,11 @@
     return fetch(url, opts);
   }
 
-  // Use auth-provided helpers if available
-  const authGetToken = (typeof getToken === 'function') ? getToken : getTokenFallback;
-  const authFetch = (typeof authFetch === 'function') ? authFetch : authFetchFallback;
+  // Prefer window-provided helpers if present
+  const authGetToken = (typeof window.getToken === 'function') ? window.getToken : getTokenFallback;
+  const authFetchFn = (typeof window.authFetch === 'function') ? window.authFetch : authFetchFallback;
 
-  // DOM
+  // DOM elements (defensive)
   const form = document.getElementById('createListingForm');
   const titleEl = document.getElementById('title');
   const authorEl = document.getElementById('author');
@@ -48,45 +45,34 @@
   const statusText = document.getElementById('statusText');
   const imagePreview = document.getElementById('imagePreview');
 
-  // Socket connection (optional but helpful)
+  if (!form) {
+    // Not on create page — nothing to do
+    return;
+  }
+
+  // Socket connection
   let socket = null;
   function connectSocket() {
     try {
       const token = authGetToken();
-      if (!token) return console.warn('seller.js: no auth token found; sockets disabled');
-      // connect with token in handshake.auth.token
+      if (!token) return console.warn('seller.js: no auth token; sockets disabled');
+
       socket = io(window.SOCKET_URL || (new URL(API_BASE).origin), {
         auth: { token: `Bearer ${token}` },
         transports: ['websocket', 'polling']
       });
 
-      socket.on('connect', () => {
-        console.log('Socket connected (seller)', socket.id);
-      });
-      socket.on('connect_error', (err) => {
-        console.warn('Socket connect error:', err && err.message ? err.message : err);
-      });
-
-      // optionally listen to listing related events
-      socket.on('listing_reserved', (payload) => {
-        console.log('listing_reserved:', payload);
-        // If seller is notified about their listing, you may show a toast here.
-      });
-
-      socket.on('listing_confirmed', (payload) => {
-        console.log('listing_confirmed:', payload);
-      });
-
-      socket.on('listing_updated', (payload) => {
-        console.log('listing_updated:', payload);
-      });
-
+      socket.on('connect', () => console.log('Socket connected (seller)', socket.id));
+      socket.on('connect_error', (err) => console.warn('Socket connect error:', err && err.message ? err.message : err));
+      socket.on('listing_reserved', (payload) => console.log('listing_reserved:', payload));
+      socket.on('listing_confirmed', (payload) => console.log('listing_confirmed:', payload));
+      socket.on('listing_updated', (payload) => console.log('listing_updated:', payload));
     } catch (e) {
       console.warn('Socket setup failed:', e);
     }
   }
 
-  // Image preview helper — accepts comma separated URLs
+  // Image preview helper
   function renderImagePreview() {
     imagePreview.innerHTML = '';
     const raw = imagesEl.value || '';
@@ -109,13 +95,12 @@
     statusText.innerText = '';
   });
 
-  // Form submit
+  // Submit handler
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     statusText.innerText = 'Creating...';
     createBtn.disabled = true;
 
-    // Basic validation
     const title = titleEl.value && titleEl.value.trim();
     if (!title) {
       statusText.innerText = 'Title is required';
@@ -134,7 +119,7 @@
     };
 
     try {
-      const res = await authFetch(LISTING_ENDPOINT, {
+      const res = await authFetchFn(LISTING_ENDPOINT, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
@@ -147,14 +132,10 @@
         return;
       }
 
-      // Success
       statusText.innerText = 'Listing created ✅';
-      // optionally navigate to listings page:
       setTimeout(() => {
-        // prefer client app routing — fallback open listings page
-        window.location.href = window.LISTINGS_PAGE || '/html_files/listings.html';
+        window.location.href = window.LISTINGS_PAGE || 'listing.html';
       }, 800);
-
     } catch (err) {
       console.error('create listing error', err);
       statusText.innerText = 'Error creating listing (network)';
@@ -162,7 +143,7 @@
     }
   });
 
-  // On load: ensure user is authenticated and connect socket
+  // Init
   (function init() {
     const token = authGetToken();
     if (!token) {
@@ -173,5 +154,4 @@
     connectSocket();
     renderImagePreview();
   })();
-
 })();
