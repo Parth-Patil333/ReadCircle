@@ -116,7 +116,19 @@ app.use('/api/profile', require('./routes/profileRoutes'));
 connectDB();
 
 // Cron jobs
-require("./cron/cleanup");
+// Cron jobs
+try {
+  const cleanup = require('./cron/cleanup');
+  if (cleanup && typeof cleanup.start === 'function') {
+    cleanup.start();
+  } else {
+    // fallback: if module exported nothing, ignore
+    console.warn('cleanup job loaded but start() not found');
+  }
+} catch (e) {
+  console.warn('Cleanup job not started:', e && e.message ? e.message : e);
+}
+
 
 // Health check
 app.get('/', (req, res) => {
