@@ -67,8 +67,8 @@ exports.createListing = async (req, res, next) => {
  * GET /api/booklisting
  * query: page, limit, q (text search), minPrice, maxPrice, condition
  *
- * NOTE: Modified to include listings reserved BY THE REQUESTING USER so buyers
- * can see & cancel their own reservations.
+ * Optional query:
+ *   includeReservedMine=1  -> include listings reserved by the requesting user (buyer)
  */
 exports.getListings = async (req, res, next) => {
   try {
@@ -81,56 +81,70 @@ exports.getListings = async (req, res, next) => {
     const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
     const condition = req.query.condition ? String(req.query.condition) : undefined;
 
-    // Determine requester id (if any)
-    const requesterId = req.user && req.user.id ? String(req.user.id) : null;
-
-    // Build availability filter:
-    // - Include listings that are not reserved (buyerId missing)
-    // - OR whose reservation has expired (reservedUntil <= now)
-    // - OR listings reserved by the current requester (so buyers see their reservations)
+    // Treat reservation expiration relative to now
     const now = new Date();
 
-    const availabilityOr = [
-      { buyerId: { $exists: false } },
-      { reservedUntil: { $lte: now } }
-    ];
+    // Base availability: buyerId not set OR reservedUntil <= now (reservation expired)
+    const availabilityFilter = {
+      $or: [
+        { buyerId: { $exists: false } },
+        { reservedUntil: { $lte: now } }
+      ]
+    };
 
-    if (requesterId) {
-      // include listings where buyerId equals the requester
-      // ensure we compare as ObjectId if possible
-      try {
-        availabilityOr.push({ buyerId: mongoose.Types.ObjectId(requesterId) });
-      } catch (e) {
-        // fallback to string compare if conversion fails
-        availabilityOr.push({ buyerId: requesterId });
-      }
+    // By default we return only available items (availabilityFilter)
+    // But if the requester is authenticated and either:
+    //  - they provided includeReservedMine=1 OR
+    //  - we detect a user and we want the buyer's own reserved items,
+    // then we allow items that are reserved by *that* buyer to be included.
+    const includeReservedMine = String(req.query.includeReservedMine || '') === '1';
+    const requesterId = req.user && req.user.id ? String(req.user.id) : null;
+
+    // Build final filter:
+    // Start with availabilityFilter
+    let filter = { ...availabilityFilter };
+
+    // If the request is from an authenticated user and includeReservedMine is set,
+    // allow items reserved by *that* buyer to be included as well.
+    if (requesterId && includeReservedMine) {
+      // Now the item is considered visible if:
+      //  - it's available (the above availabilityFilter) OR
+      //  - it's reserved and buyerId == requesterId
+      filter = {
+        $or: [
+          availabilityFilter,
+          { buyerId: requesterId }
+        ]
+      };
     }
 
-    const filter = { $or: availabilityOr };
+    // Text/search/price/condition filters apply on top of the visibility filter.
+    // NOTE: for text search we attach $text; otherwise we add other constraints.
+    const finalFilter = { ...filter };
 
     if (q) {
-      // text search requires text index on relevant fields (title, author, etc.)
-      filter.$text = { $search: q };
+      // If you have a text index on title/author, use $text.
+      finalFilter.$text = { $search: q };
     }
     if (typeof minPrice !== 'undefined') {
-      filter.price = Object.assign({}, filter.price || {}, { $gte: minPrice });
+      finalFilter.price = Object.assign({}, finalFilter.price || {}, { $gte: minPrice });
     }
     if (typeof maxPrice !== 'undefined') {
-      filter.price = Object.assign({}, filter.price || {}, { $lte: maxPrice });
+      finalFilter.price = Object.assign({}, finalFilter.price || {}, { $lte: maxPrice });
     }
     if (condition) {
-      filter.condition = condition;
+      finalFilter.condition = condition;
     }
 
     const [items, total] = await Promise.all([
-      BookListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
-      BookListing.countDocuments(filter)
+      BookListing.find(finalFilter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
+      BookListing.countDocuments(finalFilter)
     ]);
 
     res.json({
       success: true,
       data: items,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) }
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) }
     });
   } catch (err) {
     next(err);

@@ -230,8 +230,11 @@
     if (q) url.searchParams.set('q', q);
     if (cond) url.searchParams.set('condition', cond);
 
-    // ✅ ensure reserved listings by this buyer are included
-    url.searchParams.set('includeReservedMine', '1');
+    // ✅ only include reservedMine if the user is logged in
+    const currentUserId = getUserIdFromToken();
+    if (currentUserId) {
+      url.searchParams.set('includeReservedMine', '1');
+    }
 
     try {
       const res = await authFetchFn(url.toString(), { method: 'GET' });
