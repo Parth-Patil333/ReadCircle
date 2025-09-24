@@ -95,18 +95,29 @@
     statusText.innerText = '';
   });
 
-  // Submit handler
+  // DEBUG submit handler: paste over your existing submit listener
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // read DOM element for title (debug)
+    const titleElDebug = document.getElementById('title');
+    console.log('DEBUG: titleElDOM ->', titleElDebug);
+    console.log('DEBUG: titleEl.value ->', titleElDebug ? titleElDebug.value : null);
+
     statusText.innerText = 'Creating...';
     createBtn.disabled = true;
 
-    const title = titleEl.value && titleEl.value.trim();
+    // Basic validation on client
+    const title = titleElDebug && titleElDebug.value ? titleElDebug.value.trim() : '';
     if (!title) {
-      statusText.innerText = 'Title is required';
+      statusText.innerText = 'Error: title is required (client)';
       createBtn.disabled = false;
       return;
     }
+
+    // Build images array (filter data-URIs etc.)
+    const rawImages = (imagesEl.value || '').split(',').map(x => x.trim()).filter(Boolean);
+    const finalImages = rawImages.filter(u => !u.startsWith('data:') && String(u).length <= 2000);
 
     const payload = {
       title,
@@ -114,33 +125,41 @@
       condition: conditionEl.value,
       price: priceEl.value ? Number(priceEl.value) : 0,
       currency: currencyEl.value ? currencyEl.value.trim() : 'INR',
-      images: (imagesEl.value || '').split(',').map(x => x.trim()).filter(Boolean),
+      images: finalImages,
       sellerContact: sellerContactEl.value ? sellerContactEl.value.trim() : undefined
     };
 
+    // Debug logging BEFORE sending
+    console.log('DEBUG: About to send payload:', payload);
+
     try {
+      // Use authFetchFn (already defined in your file) - it attaches Authorization and headers
       const res = await authFetchFn(LISTING_ENDPOINT, {
         method: 'POST',
         body: JSON.stringify(payload)
+        // Note: do NOT rely on url-encoded forms; server expects JSON body.
       });
 
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch (e) { data = { raw: text }; }
-      console.log('Create listing response:', res.status, data);
+      // Log raw response body text (helps when error returns non-json)
+      const rawText = await res.text();
+      let parsed = null;
+      try { parsed = JSON.parse(rawText); } catch (e) { parsed = { rawText }; }
+
+      console.log('DEBUG: server response status', res.status, parsed);
+
       if (!res.ok) {
-        const message = (data && data.message) || (data && data.error) || 'Failed to create listing';
-        statusText.innerText = `Error: ${message}`;
+        statusText.innerText = `Error: ${(parsed && parsed.message) ? parsed.message : 'Server error'}`;
         createBtn.disabled = false;
         return;
       }
 
+      // success
       statusText.innerText = 'Listing created ✅';
       setTimeout(() => {
         window.location.href = window.LISTINGS_PAGE || 'listing.html';
       }, 800);
     } catch (err) {
-      console.error('create listing error', err);
+      console.error('DEBUG: create listing network error', err);
       statusText.innerText = 'Error creating listing (network)';
       createBtn.disabled = false;
     }
