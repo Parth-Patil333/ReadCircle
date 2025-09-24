@@ -14,7 +14,7 @@
       if (typeof window.createToast === 'function') {
         return window.createToast(text, opts);
       }
-    } catch (e) {}
+    } catch (e) { }
     // local simple toast
     const containerId = 'rc_toast_container';
     let container = document.getElementById(containerId);
@@ -50,7 +50,7 @@
   function getTokenFallback() {
     try {
       if (typeof window.getToken === 'function') return window.getToken();
-    } catch (e) {}
+    } catch (e) { }
     try {
       return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
     } catch (e) { return null; }
@@ -78,6 +78,29 @@
 
   const authGetToken = (typeof window.getToken === 'function') ? window.getToken : getTokenFallback;
   const authFetchFn = (typeof window.authFetch === 'function') ? window.authFetch : authFetchFallback;
+
+  // seller.js — add this near the top (after authFetchFn is available)
+  async function uploadImageToServer(file) {
+    if (!file) throw new Error('No file provided');
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    // authFetchFn will add Authorization; it won't set Content-Type for FormData — that's correct
+    const res = await authFetchFn('/api/upload', { method: 'POST', body: fd });
+
+    // parse JSON body
+    const txt = await res.text();
+    let body;
+    try { body = JSON.parse(txt); } catch (e) { body = { raw: txt }; }
+
+    if (!res.ok) {
+      const message = body && body.message ? body.message : 'Upload failed';
+      throw new Error(message);
+    }
+    // body.url is the Cloudinary secure url
+    return body.url;
+  }
 
   // small jwt parse used elsewhere
   function parseJwtSafe(token) {
@@ -195,24 +218,43 @@
       return;
     }
 
-    // images: filter out data URIs and too-long URLs
-    const rawImages = (imagesEl && imagesEl.value) ? imagesEl.value.split(',').map(x => x.trim()).filter(Boolean) : [];
-    const MAX_LEN = 2000;
-    const imagesFiltered = rawImages.filter(u => !u.startsWith('data:') && String(u).length <= MAX_LEN);
+    // --- handle image file upload if user selected a file input with id="imageFile"
+    const inputFile = document.getElementById('imageFile');
+    let finalImages = (imagesEl && imagesEl.value) ? imagesEl.value.split(',').map(x => x.trim()).filter(Boolean) : [];
 
-    if (rawImages.length > 0 && imagesFiltered.length === 0) {
-      if (statusText) statusText.innerText = 'Error: please supply hosted image URLs (not pasted images).';
+    // If file was selected, upload it first and append returned URL
+    if (inputFile && inputFile.files && inputFile.files[0]) {
+      try {
+        if (statusText) statusText.innerText = 'Uploading image...';
+        const uploadedUrl = await uploadImageToServer(inputFile.files[0]); // may throw
+        // append result to images
+        if (uploadedUrl) finalImages.push(uploadedUrl);
+      } catch (err) {
+        console.error('Image upload failed', err);
+        if (statusText) statusText.innerText = 'Image upload failed: ' + (err.message || err);
+        if (createBtn) createBtn.disabled = false;
+        return;
+      }
+    }
+
+    // Continue with previous validation (filter out data URIs if any remain)
+    finalImages = finalImages.filter(u => !u.startsWith('data:') && String(u).length <= 2000);
+
+    // If user provided only bad images, stop
+    if ((imagesEl && imagesEl.value) && finalImages.length === 0) {
+      if (statusText) statusText.innerText = 'Error: please supply hosted image URLs or upload a file.';
       if (createBtn) createBtn.disabled = false;
       return;
     }
 
+    // Build final payload
     const payload = {
       title,
       author: authorEl ? (authorEl.value || '').trim() : undefined,
       condition: conditionEl ? (conditionEl.value || '').trim() : undefined,
       price: priceEl ? (priceEl.value ? Number(priceEl.value) : 0) : 0,
       currency: currencyEl ? (currencyEl.value || '').trim() : 'INR',
-      images: imagesFiltered,
+      images: finalImages,
       sellerContact: sellerContactEl ? (sellerContactEl.value || '').trim() : undefined
     };
 

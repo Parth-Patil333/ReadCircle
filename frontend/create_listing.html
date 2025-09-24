@@ -45,8 +45,13 @@
         </div>
       </div>
 
-      <label for="images">Images (URLs, comma separated)</label>
-      <input id="images" name="images" type="text" placeholder="https://... , https://..." />
+      <!-- inside the create listing form -->
+      <label for="imageFile">Upload cover image</label>
+      <input id="imageFile" type="file" accept="image/*" />
+
+      <!-- optional: keep the images text input for manual URLs; we'll append uploaded URL there -->
+      <input id="images" type="text" placeholder="Comma-separated image URLs (optional)" />
+
       <div class="preview" id="imagePreview"></div>
 
       <label for="sellerContact">Your contact (phone or email)</label>
