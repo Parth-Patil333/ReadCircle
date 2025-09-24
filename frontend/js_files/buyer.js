@@ -78,6 +78,17 @@
     return;
   }
 
+  // -------------------- Clear grid helper --------------------
+  function clearGrid() {
+    try {
+      if (grid && typeof grid.innerHTML !== 'undefined') {
+        grid.innerHTML = '';
+      }
+    } catch (e) {
+      console.warn('clearGrid fallback failed', e);
+    }
+  }
+
   // -------------------- Pagination state --------------------
   let page = 1;
   const limit = 12;
