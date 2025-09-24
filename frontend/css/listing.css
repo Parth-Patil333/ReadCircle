@@ -1,4 +1,4 @@
-/* listings.css */
+/* listing.css */
 body {
   font-family: Inter, system-ui, Arial;
   background: #f4f6f8;
@@ -53,6 +53,31 @@ body {
   gap: 12px;
 }
 
+/* .listing-card used by buyer.js createCard() */
+.listing-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(20,30,60,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  min-height: 120px;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.listing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(20,30,60,0.08);
+}
+
+/* reserved highlight (used by JS: add .reserved to the card) */
+.listing-card.reserved {
+  border: 2px solid #ff9800;
+  background: #fff8e1;
+}
+
+/* legacy .card rules preserved for other pages */
 .card {
   background: #fff;
   border-radius: 8px;
@@ -98,7 +123,27 @@ body {
   margin-bottom: 8px;
 }
 
-.card .actions {
+.listing-card img,
+.card img {
+  max-width: 120px;
+  border-radius: 6px;
+  display: block;
+}
+
+.listing-card h4,
+.card h3 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+}
+
+.listing-card .meta,
+.card .meta {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.card .actions,
+.listing-card .actions {
   display: flex;
   gap: 8px;
   align-items: center;

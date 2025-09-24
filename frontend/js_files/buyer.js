@@ -5,15 +5,13 @@
 (function () {
   // -------------------- Config --------------------
   const API_BASE = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
-  const LISTING_ENDPOINT = `${API_BASE.replace(/\/api\/?$/, '')}/api/booklisting`.replace(/\/\/api/, '/api'); // robustly form URL
-  // Note: if you prefer LISTING_ENDPOINT = `${API_BASE}/booklisting` (when BASE_URL already ends with /api),
-  // you can change it. This approach aims to work with both window.BASE_URL and bare API_BASE.
+  const LISTING_ENDPOINT = `${API_BASE.replace(/\/api\/?$/, '')}/api/booklisting`.replace(/\/\/api/, '/api');
 
   // -------------------- Auth helpers (no TDZ) --------------------
   function getTokenFallback() {
     try {
       if (typeof window.getToken === 'function') return window.getToken();
-    } catch (e) {}
+    } catch (e) { }
     try {
       return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
     } catch (e) { return null; }
@@ -24,14 +22,10 @@
     const options = Object.assign({}, opts);
     options.headers = Object.assign({}, options.headers || {});
 
-    // If body is an object (not FormData), stringify it and set JSON content-type
     if (typeof options.body !== 'undefined' && !(options.body instanceof FormData)) {
       if (typeof options.body === 'object') {
-        try {
-          options.body = JSON.stringify(options.body);
-        } catch (e) { /* leave as-is */ }
+        try { options.body = JSON.stringify(options.body); } catch (e) { }
       }
-      // set content-type if not provided
       const hasCT = Object.keys(options.headers).some(h => h.toLowerCase() === 'content-type');
       if (!hasCT) options.headers['Content-Type'] = 'application/json';
     }
@@ -42,11 +36,9 @@
     return fetch(url, options);
   }
 
-  // Use window-provided if available; otherwise fallbacks
   const authGetToken = (typeof window.getToken === 'function') ? window.getToken : getTokenFallback;
   const authFetchFn = (typeof window.authFetch === 'function') ? window.authFetch : authFetchFallback;
 
-  // small jwt parse helper (returns payload or null)
   function parseJwtSafe(token) {
     try {
       if (!token) return null;
@@ -56,9 +48,7 @@
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join(''));
       return JSON.parse(json);
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
 
   function isTokenExpired(token) {
@@ -74,7 +64,7 @@
     return String(p.id || p._id || p.userId || '');
   }
 
-  // -------------------- DOM references (defensive) --------------------
+  // -------------------- DOM references --------------------
   const grid = document.getElementById('listingsGrid');
   const searchInput = document.getElementById('searchInput');
   const conditionFilter = document.getElementById('conditionFilter');
@@ -83,7 +73,6 @@
   const nextPageBtn = document.getElementById('nextPage');
   const pageInfo = document.getElementById('pageInfo');
 
-  // If grid doesn't exist, bail silently (this script can be loaded site-wide)
   if (!grid) {
     console.info('buyer.js: listingsGrid not found on this page — buyer script will not render.');
     return;
@@ -94,7 +83,7 @@
   const limit = 12;
   let totalPages = 1;
 
-  // -------------------- Socket setup (reuses window.__rc_socket if present) --------------------
+  // -------------------- Socket setup --------------------
   function ensureSocket() {
     if (window.__rc_socket && typeof window.__rc_socket.on === 'function') {
       return window.__rc_socket;
@@ -103,7 +92,6 @@
       console.warn('buyer.js: socket.io client not loaded; notifications disabled.');
       return null;
     }
-    // Derive URL from explicit override or from API_BASE
     const origin = window.SOCKET_URL || (API_BASE.replace(/\/api\/?$/, '')) || window.location.origin;
     const token = authGetToken();
     if (!token) {
@@ -130,112 +118,13 @@
   if (socket) {
     socket.on('connect', () => console.log('Socket connected (buyer):', socket.id));
     socket.on('connect_error', (err) => console.warn('buyer socket connect_error', err && (err.message || err)));
-    socket.on('listing_updated', (payload) => {
-      console.log('buyer: listing_updated', payload);
-      fetchAndRender(); // refresh
-    });
-    socket.on('new-listing', (payload) => {
-      console.log('buyer: new-listing', payload);
-      fetchAndRender();
-    });
-    socket.on('listing_reserved', (payload) => {
-      console.log('buyer: listing_reserved', payload);
-      fetchAndRender();
-    });
-    socket.on('listing_confirmed', (payload) => {
-      console.log('buyer: listing_confirmed', payload);
-      fetchAndRender();
-    });
+    socket.on('listing_updated', (payload) => { console.log('buyer: listing_updated', payload); fetchAndRender(); });
+    socket.on('new-listing', (payload) => { console.log('buyer: new-listing', payload); fetchAndRender(); });
+    socket.on('listing_reserved', (payload) => { console.log('buyer: listing_reserved', payload); fetchAndRender(); });
+    socket.on('listing_confirmed', (payload) => { console.log('buyer: listing_confirmed', payload); fetchAndRender(); });
   }
-
-  // -------------------- Render helpers --------------------
-  function clearGrid() {
-    grid.innerHTML = '';
-  }
-
-  function createCard(listing) {
-    const card = document.createElement('div');
-    card.className = 'listing-card';
-
-    const title = document.createElement('h4');
-    title.innerText = listing.title || 'Untitled';
-    card.appendChild(title);
-
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.innerText = `${listing.author ? listing.author + ' • ' : ''}${listing.condition || ''}`;
-    card.appendChild(meta);
-
-    if (Array.isArray(listing.images) && listing.images.length) {
-      const img = document.createElement('img');
-      img.src = listing.images[0];
-      img.alt = listing.title || 'cover';
-      img.style.maxWidth = '120px';
-      img.style.display = 'block';
-      img.onerror = () => { img.style.opacity = '0.4'; };
-      card.appendChild(img);
-    }
-
-    const price = document.createElement('div');
-    price.className = 'price';
-    price.innerText = `${listing.price != null ? listing.price : ''} ${listing.currency || ''}`;
-    card.appendChild(price);
-
-    // Status/reservation info
-    const status = document.createElement('div');
-    status.className = 'status';
-    if (listing.buyerId) {
-      status.innerText = `Reserved until ${listing.reservedUntil ? (new Date(listing.reservedUntil)).toLocaleString() : '...'}`;
-    } else {
-      status.innerText = 'Available';
-    }
-    card.appendChild(status);
-
-    // Action buttons (reserve or contact)
-    const actions = document.createElement('div');
-    actions.className = 'actions';
-
-    // reserve button only if no buyer and not your listing
-    const currentUserId = getUserIdFromToken();
-    const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
-    if (!listing.buyerId && !amSeller) {
-      const reserveBtn = document.createElement('button');
-      reserveBtn.innerText = 'Reserve';
-      reserveBtn.className = 'btn';
-      reserveBtn.addEventListener('click', () => doReserve(listing._id, reserveBtn));
-      actions.appendChild(reserveBtn);
-    } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
-      const cancelBtn = document.createElement('button');
-      cancelBtn.innerText = 'Cancel reservation';
-      cancelBtn.className = 'btn btn-ghost';
-      cancelBtn.addEventListener('click', () => doCancel(listing._id, cancelBtn));
-      actions.appendChild(cancelBtn);
-    } else if (amSeller) {
-      const info = document.createElement('div');
-      info.innerText = 'Your listing';
-      actions.appendChild(info);
-    } else {
-      // reserved by someone else -> show buyer obfuscated if present
-      const info = document.createElement('div');
-      info.innerText = listing.buyerId ? 'Reserved' : '';
-      actions.appendChild(info);
-    }
-
-    // append contact (if allowed by your app logic)
-    if (listing.sellerContact && !amSeller) {
-      const contact = document.createElement('div');
-      contact.className = 'contact';
-      contact.innerText = `Contact: ${listing.sellerContact}`;
-      card.appendChild(contact);
-    }
-
-    card.appendChild(actions);
-    return card;
-  }
-
   // -------------------- Fetch & render --------------------
   async function fetchListings(params = {}) {
-    // params: { page, limit, q, condition }
     const q = params.q || (searchInput ? searchInput.value : '') || '';
     const cond = params.condition || (conditionFilter ? conditionFilter.value : '') || '';
     const p = params.page || page || 1;
@@ -247,8 +136,8 @@
     if (q) url.searchParams.set('q', q);
     if (cond) url.searchParams.set('condition', cond);
 
-    // optionally allow server to exclude mine (if we later add query param)
-    // url.searchParams.set('excludeMine', 'true');
+    // ✅ ensure reserved listings by this buyer are included
+    url.searchParams.set('includeReservedMine', '1');
 
     try {
       const res = await authFetchFn(url.toString(), { method: 'GET' });
@@ -274,8 +163,12 @@
     const { items, meta } = await fetchListings({ page, limit });
     totalPages = meta.totalPages || 1;
 
-    // filter out current user's listings from buyer browse
-    const visible = items.filter(l => !(currentUserId && String(l.sellerId) === String(currentUserId)));
+    // ✅ filter: hide my own listings as seller, but keep my reserved ones
+    const visible = items.filter(l => {
+      const amSeller = currentUserId && String(l.sellerId) === String(currentUserId);
+      if (amSeller) return false;
+      return true; // include all buyer-visible, including my reserved
+    });
 
     if (!visible.length) {
       const empty = document.createElement('div');
@@ -288,12 +181,19 @@
 
     visible.forEach(listing => {
       const c = createCard(listing);
+
+      // ✅ Optional visual highlight if this is my reserved listing
+      const currentUserId = getUserIdFromToken();
+      if (listing.buyerId && String(listing.buyerId) === currentUserId) {
+        c.style.border = '2px solid #ff9800';
+        c.style.background = '#fff8e1';
+      }
+
       grid.appendChild(c);
     });
 
     if (pageInfo) pageInfo.innerText = `Page ${page} of ${totalPages}`;
   }
-
   // -------------------- Actions --------------------
   async function doReserve(listingId, btn) {
     if (!confirm('Reserve this listing? This will hold it for 48 hours.')) return;
@@ -310,7 +210,7 @@
         btn.innerText = 'Reserve';
         return;
       }
-      // success
+      // ✅ refresh so reserved card reappears highlighted
       fetchAndRender();
     } catch (err) {
       console.error('reserve error', err);
@@ -335,6 +235,7 @@
         btn.innerText = 'Cancel reservation';
         return;
       }
+      // ✅ refresh so cancelled card disappears from reserved state and goes back to normal
       fetchAndRender();
     } catch (err) {
       console.error('cancel error', err);
@@ -343,9 +244,12 @@
       btn.innerText = 'Cancel reservation';
     }
   }
-
   // -------------------- UI bindings --------------------
-  if (refreshBtn) refreshBtn.addEventListener('click', (e) => { e.preventDefault(); fetchAndRender(); });
+  if (refreshBtn) refreshBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    fetchAndRender();
+  });
+
   if (searchInput) {
     let ti = null;
     searchInput.addEventListener('input', () => {
@@ -356,17 +260,34 @@
       }, 400);
     });
   }
-  if (conditionFilter) conditionFilter.addEventListener('change', () => { page = 1; fetchAndRender(); });
-  if (prevPageBtn) prevPageBtn.addEventListener('click', () => { if (page > 1) { page -= 1; fetchAndRender(); } });
-  if (nextPageBtn) nextPageBtn.addEventListener('click', () => { if (page < totalPages) { page += 1; fetchAndRender(); } });
 
-  // initial render
+  if (conditionFilter) {
+    conditionFilter.addEventListener('change', () => {
+      page = 1;
+      fetchAndRender();
+    });
+  }
+
+  if (prevPageBtn) prevPageBtn.addEventListener('click', () => {
+    if (page > 1) {
+      page -= 1;
+      fetchAndRender();
+    }
+  });
+
+  if (nextPageBtn) nextPageBtn.addEventListener('click', () => {
+    if (page < totalPages) {
+      page += 1;
+      fetchAndRender();
+    }
+  });
+
+  // -------------------- Initial render --------------------
   fetchAndRender();
 
-  // expose for debugging
+  // -------------------- Debug helpers --------------------
   window.ReadCircleBuyer = {
     fetchAndRender,
     getUserIdFromToken
   };
-
 })();

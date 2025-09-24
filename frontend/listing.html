@@ -38,24 +38,24 @@
   </div>
 
   <script>
-    // exact backend origin serving Socket.IO (set to your Render/Heroku/own host)
-    // replace with your backend origin if different
-    window.SOCKET_URL = "https://readcircle.onrender.com";
-    // if you also have an API_BASE override, ensure that either window.BASE_URL or window.SOCKET_URL is correct
-    // window.BASE_URL = "https://readcircle.onrender.com/api";
+    // Backend hosts — set these to your deployed hosts
+    window.SOCKET_URL = "https://readcircle.onrender.com";            // socket origin (no trailing /)
+    window.BASE_URL = "https://readcircle.onrender.com/api";         // API base used by frontend
   </script>
 
-  <!-- socket.io -->
+  <!-- socket.io client library (must come before any socket.js) -->
   <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
 
-
-  <!-- auth helpers -->
+  <!-- auth helpers (must be loaded before socket bootstrap so socket can use token) -->
   <script src="js_files/auth.js"></script>
 
-  <!-- realtime toast notifications -->
+  <!-- central socket bootstrap (creates window.__rc_socket if token present) -->
+  <script src="js_files/socket.js"></script>
+
+  <!-- realtime toast notifications (uses socket or auth) -->
   <script src="js_files/notification_socket.js"></script>
 
-  <!-- buyer logic -->
+  <!-- buyer logic (fetch + render + actions) -->
   <script src="js_files/buyer.js"></script>
 </body>
 

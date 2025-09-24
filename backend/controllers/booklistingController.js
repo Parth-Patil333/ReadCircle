@@ -66,6 +66,9 @@ exports.createListing = async (req, res, next) => {
  * Get listings (public)
  * GET /api/booklisting
  * query: page, limit, q (text search), minPrice, maxPrice, condition
+ * Special query:
+ *   includeReservedMine=1 -> include reserved listings that belong to the requesting buyer
+ *   excludeMine=1 -> exclude my own listings as seller
  */
 exports.getListings = async (req, res, next) => {
   try {
@@ -78,29 +81,47 @@ exports.getListings = async (req, res, next) => {
     const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
     const condition = req.query.condition ? String(req.query.condition) : undefined;
 
-    // Build filter:
-    // Available if buyerId is not set OR reservedUntil has expired
+    const userId = req.user && req.user.id ? String(req.user.id) : null;
+    const includeReservedMine = req.query.includeReservedMine === '1' || req.query.includeReservedMine === 'true';
+    const excludeMine = req.query.excludeMine === '1' || req.query.excludeMine === 'true';
+
     const now = new Date();
-    const availabilityFilter = {
-      $or: [
-        { buyerId: { $exists: false } },
-        { reservedUntil: { $lte: now } } // reservation expired -> treat as available (cleanup job should clear buyerId though)
-      ]
-    };
+
+    // Base availability filter
+    let availabilityFilter;
+    if (includeReservedMine && userId) {
+      // show listings if:
+      //   - not reserved OR expired
+      //   - OR reserved by this user
+      availabilityFilter = {
+        $or: [
+          { buyerId: { $exists: false } },
+          { reservedUntil: { $lte: now } },
+          { buyerId: mongoose.Types.ObjectId.isValid(userId) ? mongoose.Types.ObjectId(userId) : userId }
+        ]
+      };
+    } else {
+      // default: only unreserved / expired
+      availabilityFilter = {
+        $or: [
+          { buyerId: { $exists: false } },
+          { reservedUntil: { $lte: now } }
+        ]
+      };
+    }
 
     const filter = { ...availabilityFilter };
 
-    if (q) {
-      filter.$text = { $search: q };
-    }
+    if (q) filter.$text = { $search: q };
     if (typeof minPrice !== 'undefined') {
       filter.price = Object.assign({}, filter.price || {}, { $gte: minPrice });
     }
     if (typeof maxPrice !== 'undefined') {
       filter.price = Object.assign({}, filter.price || {}, { $lte: maxPrice });
     }
-    if (condition) {
-      filter.condition = condition;
+    if (condition) filter.condition = condition;
+    if (excludeMine && userId) {
+      filter.sellerId = { $ne: mongoose.Types.ObjectId.isValid(userId) ? mongoose.Types.ObjectId(userId) : userId };
     }
 
     const [items, total] = await Promise.all([
