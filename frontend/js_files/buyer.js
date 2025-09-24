@@ -89,6 +89,89 @@
     }
   }
 
+  // -------------------- Create card helper --------------------
+  // Must be defined before fetchAndRender uses it.
+  function createCard(listing) {
+    const card = document.createElement('div');
+    card.className = 'listing-card';
+
+    const title = document.createElement('h4');
+    title.innerText = listing.title || 'Untitled';
+    card.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerText = `${listing.author ? listing.author + ' • ' : ''}${listing.condition || ''}`;
+    card.appendChild(meta);
+
+    if (Array.isArray(listing.images) && listing.images.length) {
+      const img = document.createElement('img');
+      img.src = listing.images[0];
+      img.alt = listing.title || 'cover';
+      img.style.maxWidth = '120px';
+      img.style.display = 'block';
+      img.onerror = () => { img.style.opacity = '0.4'; };
+      card.appendChild(img);
+    }
+
+    const price = document.createElement('div');
+    price.className = 'price';
+    price.innerText = `${listing.price != null ? listing.price : ''} ${listing.currency || ''}`;
+    card.appendChild(price);
+
+    // Status/reservation info
+    const status = document.createElement('div');
+    status.className = 'status';
+    if (listing.buyerId) {
+      status.innerText = `Reserved until ${listing.reservedUntil ? (new Date(listing.reservedUntil)).toLocaleString() : '...'}`;
+    } else {
+      status.innerText = 'Available';
+    }
+    card.appendChild(status);
+
+    // Action buttons (reserve or contact)
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    // reserve button only if no buyer and not your listing
+    const currentUserId = getUserIdFromToken();
+    const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
+    if (!listing.buyerId && !amSeller) {
+      const reserveBtn = document.createElement('button');
+      reserveBtn.innerText = 'Reserve';
+      reserveBtn.className = 'btn';
+      reserveBtn.addEventListener('click', () => doReserve(listing._id, reserveBtn));
+      actions.appendChild(reserveBtn);
+    } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.innerText = 'Cancel reservation';
+      cancelBtn.className = 'btn btn-ghost';
+      cancelBtn.addEventListener('click', () => doCancel(listing._id, cancelBtn));
+      actions.appendChild(cancelBtn);
+    } else if (amSeller) {
+      const info = document.createElement('div');
+      info.innerText = 'Your listing';
+      actions.appendChild(info);
+    } else {
+      // reserved by someone else -> show buyer obfuscated if present
+      const info = document.createElement('div');
+      info.innerText = listing.buyerId ? 'Reserved' : '';
+      actions.appendChild(info);
+    }
+
+    // append contact (if allowed by your app logic)
+    if (listing.sellerContact && !amSeller) {
+      const contact = document.createElement('div');
+      contact.className = 'contact';
+      contact.innerText = `Contact: ${listing.sellerContact}`;
+      card.appendChild(contact);
+    }
+
+    card.appendChild(actions);
+    return card;
+  }
+
+
   // -------------------- Pagination state --------------------
   let page = 1;
   const limit = 12;
