@@ -218,7 +218,9 @@
     socket.on('listing_confirmed', (payload) => { console.log('buyer: listing_confirmed', payload); fetchAndRender(); });
   }
   // -------------------- Fetch & render --------------------
+    // Replace existing fetchListings with this debug/normalizing version
   async function fetchListings(params = {}) {
+    // params: { page, limit, q, condition }
     const q = params.q || (searchInput ? searchInput.value : '') || '';
     const cond = params.condition || (conditionFilter ? conditionFilter.value : '') || '';
     const p = params.page || page || 1;
@@ -230,23 +232,66 @@
     if (q) url.searchParams.set('q', q);
     if (cond) url.searchParams.set('condition', cond);
 
-    // ✅ only include reservedMine if the user is logged in
-    const currentUserId = getUserIdFromToken();
-    if (currentUserId) {
-      url.searchParams.set('includeReservedMine', '1');
-    }
+    // ensure reserved listings by this buyer are included
+    url.searchParams.set('includeReservedMine', '1');
+
+    // DEBUG: show URL and headers (network tab still shows headers but console is faster)
+    console.debug('buyer.js: fetchListings url ->', url.toString());
 
     try {
       const res = await authFetchFn(url.toString(), { method: 'GET' });
-      if (!res.ok) {
-        console.warn('fetchListings: server returned', res.status);
+
+      // Read text for robust logging/parsing
+      const txt = await res.text().catch(() => '');
+      let body;
+      try {
+        body = txt ? JSON.parse(txt) : {};
+      } catch (e) {
+        // not JSON — log raw text and bail
+        console.warn('buyer.js: fetchListings response not JSON:', txt);
         return { items: [], meta: { page: p, totalPages: 1 } };
       }
-      const body = await res.json().catch(() => ({}));
-      return {
-        items: body.data && Array.isArray(body.data.items) ? body.data.items : (body.data || []),
-        meta: body.meta || { page: p, totalPages: 1 }
-      };
+
+      // DEBUG: log the full parsed response
+      console.debug('buyer.js: fetchListings response ->', body);
+
+      if (!res.ok) {
+        console.warn('fetchListings: server returned non-OK status', res.status, body);
+        return { items: [], meta: { page: p, totalPages: 1 } };
+      }
+
+      // Normalize possible shapes:
+      // 1) { success:true, data: [ ... ], meta: {...} }
+      // 2) { success:true, data: { items: [...], meta: {...} } }
+      // 3) older shape: { data: [...], meta: {...} }
+      let items = [];
+      let meta = { page: p, totalPages: 1 };
+
+      if (body) {
+        // prefer body.data.items
+        if (body.data && Array.isArray(body.data.items)) {
+          items = body.data.items;
+          meta = body.data.meta || body.meta || body.meta || meta;
+        } else if (Array.isArray(body.data)) {
+          items = body.data;
+          meta = body.meta || meta;
+        } else if (Array.isArray(body)) {
+          items = body;
+        } else if (body.items && Array.isArray(body.items)) {
+          items = body.items;
+          meta = body.meta || meta;
+        } else if (body.data && Array.isArray(body.data)) {
+          items = body.data;
+          meta = body.meta || meta;
+        }
+      }
+
+      // Ensure meta.totalPages presence if server sends total/limit
+      if (!meta.totalPages && typeof meta.total === 'number' && typeof meta.limit === 'number') {
+        meta.totalPages = Math.max(1, Math.ceil(meta.total / meta.limit));
+      }
+
+      return { items, meta };
     } catch (err) {
       console.error('fetchListings network error', err);
       return { items: [], meta: { page: p, totalPages: 1 } };
