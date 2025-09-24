@@ -36,14 +36,34 @@ function requireAuth() {
   return token;
 }
 
-// ✅ Wrapper to auto-attach Authorization header
+// ✅ Wrapper to auto-attach Authorization header and JSON content-type when needed
 async function authFetch(url, options = {}) {
   const token = getToken();
-  const headers = Object.assign({}, options.headers || {});
-  if (token && !isTokenExpired(token)) {
-    headers.Authorization = `Bearer ${token}`;
+  // make a shallow copy to avoid mutating caller's object
+  const opts = Object.assign({}, options);
+  opts.headers = Object.assign({}, opts.headers || {});
+
+  // If there's a body and no Content-Type, assume JSON (but skip for FormData)
+  if (typeof opts.body !== 'undefined') {
+    // If body is an object, stringify it for JSON
+    if (!(opts.body instanceof FormData) && typeof opts.body === 'object') {
+      try {
+        opts.body = JSON.stringify(opts.body);
+      } catch (e) {
+        // fallback: keep original body
+      }
+    }
+    // If Content-Type header not present and body is not FormData, set JSON
+    const hasCT = Object.keys(opts.headers).some(h => h.toLowerCase() === 'content-type');
+    if (!hasCT && !(opts.body instanceof FormData)) {
+      opts.headers['Content-Type'] = 'application/json';
+    }
   }
-  return fetch(url, { ...options, headers });
+
+  if (token && !isTokenExpired(token)) {
+    opts.headers.Authorization = `Bearer ${token}`;
+  }
+  return fetch(url, opts);
 }
 
 // Optional convenience
