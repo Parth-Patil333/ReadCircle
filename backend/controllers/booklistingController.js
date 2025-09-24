@@ -66,9 +66,7 @@ exports.createListing = async (req, res, next) => {
  * Get listings (public)
  * GET /api/booklisting
  * query: page, limit, q (text search), minPrice, maxPrice, condition
- *
- * Optional query:
- *   includeReservedMine=1  -> include listings reserved by the requesting user (buyer)
+ * optional query: includeReservedMine=1  -> include listings reserved by the requesting user
  */
 exports.getListings = async (req, res, next) => {
   try {
@@ -81,10 +79,13 @@ exports.getListings = async (req, res, next) => {
     const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
     const condition = req.query.condition ? String(req.query.condition) : undefined;
 
-    // Treat reservation expiration relative to now
+    // whether to include listings reserved by the requesting user
+    const includeReservedMine = String(req.query.includeReservedMine || '') === '1';
+    const requestingUserId = req.user && (req.user.id || req.user._id) ? String(req.user.id || req.user._id) : null;
+
     const now = new Date();
 
-    // Base availability: buyerId not set OR reservedUntil <= now (reservation expired)
+    // Availability filter: listing is available if buyerId missing OR reservedUntil <= now (reservation expired)
     const availabilityFilter = {
       $or: [
         { buyerId: { $exists: false } },
@@ -92,59 +93,49 @@ exports.getListings = async (req, res, next) => {
       ]
     };
 
-    // By default we return only available items (availabilityFilter)
-    // But if the requester is authenticated and either:
-    //  - they provided includeReservedMine=1 OR
-    //  - we detect a user and we want the buyer's own reserved items,
-    // then we allow items that are reserved by *that* buyer to be included.
-    const includeReservedMine = String(req.query.includeReservedMine || '') === '1';
-    const requesterId = req.user && req.user.id ? String(req.user.id) : null;
-
-    // Build final filter:
-    // Start with availabilityFilter
-    let filter = { ...availabilityFilter };
-
-    // If the request is from an authenticated user and includeReservedMine is set,
-    // allow items reserved by *that* buyer to be included as well.
-    if (requesterId && includeReservedMine) {
-      // Now the item is considered visible if:
-      //  - it's available (the above availabilityFilter) OR
-      //  - it's reserved and buyerId == requesterId
+    // Base filter will either:
+    // - include listings that meet availabilityFilter (default)
+    // - OR include listings reserved by the requesting user (if includeReservedMine)
+    let filter;
+    if (includeReservedMine && requestingUserId) {
+      // include either available OR reserved-by-me
       filter = {
         $or: [
           availabilityFilter,
-          { buyerId: requesterId }
+          { buyerId: requestingUserId }
         ]
       };
+    } else {
+      // normal public view: only available listings
+      filter = { ...availabilityFilter };
     }
 
-    // Text/search/price/condition filters apply on top of the visibility filter.
-    // NOTE: for text search we attach $text; otherwise we add other constraints.
-    const finalFilter = { ...filter };
-
+    // Apply text search and other filters
     if (q) {
-      // If you have a text index on title/author, use $text.
-      finalFilter.$text = { $search: q };
+      filter.$text = { $search: q };
     }
     if (typeof minPrice !== 'undefined') {
-      finalFilter.price = Object.assign({}, finalFilter.price || {}, { $gte: minPrice });
+      filter.price = Object.assign({}, filter.price || {}, { $gte: minPrice });
     }
     if (typeof maxPrice !== 'undefined') {
-      finalFilter.price = Object.assign({}, finalFilter.price || {}, { $lte: maxPrice });
+      filter.price = Object.assign({}, filter.price || {}, { $lte: maxPrice });
     }
     if (condition) {
-      finalFilter.condition = condition;
+      filter.condition = condition;
     }
 
     const [items, total] = await Promise.all([
-      BookListing.find(finalFilter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
-      BookListing.countDocuments(finalFilter)
+      BookListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
+      BookListing.countDocuments(filter)
     ]);
 
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    // Return meta.totalPages (the frontend expects `totalPages`)
     res.json({
       success: true,
       data: items,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      meta: { page, limit, total, totalPages }
     });
   } catch (err) {
     next(err);
