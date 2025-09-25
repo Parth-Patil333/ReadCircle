@@ -1,11 +1,35 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Listings — ReadCircle</title>
+
+  <!-- your site stylesheet (preferred place for full styles including reserved-mine) -->
   <link rel="stylesheet" href="css/listing.css" />
+
+  <!-- Inline fallback styles for reserved highlight (add the full snippet to css/listing.css too) -->
+  <style>
+    /* minimal fallback so reserved items are visible even if listing.css wasn't updated */
+    .listing-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 6px 18px rgba(20,30,60,0.06);
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .listing-card.reserved-mine {
+      border: 2px solid #ffb564;
+      background: #fff7ef;
+    }
+    .empty { padding: 18px; color:#666; font-style:italic; }
+    .actions { margin-top: 8px; display:flex; gap:8px; align-items:center; }
+    .btn { padding:8px 10px; border-radius:6px; cursor:pointer; }
+    .btn.btn-ghost { background:#f3f6f7; border:1px solid #e6ecec; }
+  </style>
 </head>
 
 <body>
@@ -38,25 +62,26 @@
   </div>
 
   <script>
-    // Backend hosts — set these to your deployed hosts
-    window.SOCKET_URL = "https://readcircle.onrender.com";            // socket origin (no trailing /)
-    window.BASE_URL = "https://readcircle.onrender.com/api";         // API base used by frontend
+    // Configure these to match your deployed backend
+    // SOCKET_URL: origin for socket.io client (no trailing slash)
+    // BASE_URL: API base used by frontend (include /api if your frontend expects it)
+    window.SOCKET_URL = "https://readcircle.onrender.com";
+    window.BASE_URL   = "https://readcircle.onrender.com/api";
   </script>
 
-  <!-- socket.io client library (must come before any socket.js) -->
+  <!-- socket.io client must be loaded before any script that calls `io()` -->
   <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
 
-  <!-- auth helpers (must be loaded before socket bootstrap so socket can use token) -->
+  <!-- auth helpers (provide getToken()/authFetch() used by other scripts) -->
   <script src="js_files/auth.js"></script>
 
-  <!-- central socket bootstrap (creates window.__rc_socket if token present) -->
+  <!-- optional unified socket bootstrap (creates window.__rc_socket if token present) -->
   <script src="js_files/socket.js"></script>
 
-  <!-- realtime toast notifications (uses socket or auth) -->
+  <!-- realtime toast + notification helpers (uses socket or auth) -->
   <script src="js_files/notification_socket.js"></script>
 
-  <!-- buyer logic (fetch + render + actions) -->
+  <!-- buyer logic (renders listings, reserve/cancel) -->
   <script src="js_files/buyer.js"></script>
 </body>
-
 </html>
