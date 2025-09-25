@@ -91,9 +91,13 @@
 
   // -------------------- Create card helper --------------------
   // Must be defined before fetchAndRender uses it.
-  function createCard(listing) {
+  function createCard(listing, opts = {}) {
+    // opts: { highlightReserved: boolean }
+    const highlightReserved = !!opts.highlightReserved;
+
     const card = document.createElement('div');
     card.className = 'listing-card';
+    if (highlightReserved) card.classList.add('reserved-mine');
 
     const title = document.createElement('h4');
     title.innerText = listing.title || 'Untitled';
@@ -119,30 +123,36 @@
     price.innerText = `${listing.price != null ? listing.price : ''} ${listing.currency || ''}`;
     card.appendChild(price);
 
+    // Normalize ids to strings for comparisons (defensive)
+    const sellerIdStr = listing.sellerId ? String(listing.sellerId) : '';
+    const buyerIdStr = listing.buyerId ? String(listing.buyerId) : '';
+    const currentUserId = getUserIdFromToken();
+
     // Status/reservation info
     const status = document.createElement('div');
     status.className = 'status';
-    if (listing.buyerId) {
+    if (buyerIdStr) {
       status.innerText = `Reserved until ${listing.reservedUntil ? (new Date(listing.reservedUntil)).toLocaleString() : '...'}`;
     } else {
       status.innerText = 'Available';
     }
     card.appendChild(status);
 
-    // Action buttons (reserve or contact)
     const actions = document.createElement('div');
     actions.className = 'actions';
 
-    // reserve button only if no buyer and not your listing
-    const currentUserId = getUserIdFromToken();
-    const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
-    if (!listing.buyerId && !amSeller) {
+    const amSeller = currentUserId && sellerIdStr === String(currentUserId);
+    const amBuyer = currentUserId && buyerIdStr === String(currentUserId);
+
+    // Reserve button only for available items (not mine as seller)
+    if (!buyerIdStr && !amSeller) {
       const reserveBtn = document.createElement('button');
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn';
       reserveBtn.addEventListener('click', () => doReserve(listing._id, reserveBtn));
       actions.appendChild(reserveBtn);
-    } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
+    } else if (amBuyer) {
+      // If I am the buyer who reserved, show Cancel button clearly
       const cancelBtn = document.createElement('button');
       cancelBtn.innerText = 'Cancel reservation';
       cancelBtn.className = 'btn btn-ghost';
@@ -153,13 +163,12 @@
       info.innerText = 'Your listing';
       actions.appendChild(info);
     } else {
-      // reserved by someone else -> show buyer obfuscated if present
       const info = document.createElement('div');
-      info.innerText = listing.buyerId ? 'Reserved' : '';
+      info.innerText = buyerIdStr ? 'Reserved' : '';
       actions.appendChild(info);
     }
 
-    // append contact (if allowed by your app logic)
+    // contact
     if (listing.sellerContact && !amSeller) {
       const contact = document.createElement('div');
       contact.className = 'contact';
@@ -170,6 +179,7 @@
     card.appendChild(actions);
     return card;
   }
+
 
 
   // -------------------- Pagination state --------------------
@@ -218,7 +228,7 @@
     socket.on('listing_confirmed', (payload) => { console.log('buyer: listing_confirmed', payload); fetchAndRender(); });
   }
   // -------------------- Fetch & render --------------------
-    // Replace existing fetchListings with this debug/normalizing version
+  // Replace existing fetchListings with this debug/normalizing version
   async function fetchListings(params = {}) {
     // params: { page, limit, q, condition }
     const q = params.q || (searchInput ? searchInput.value : '') || '';
@@ -299,20 +309,37 @@
   }
 
   async function fetchAndRender() {
-    clearGrid();
+    // clear grid first
+    grid.innerHTML = '';
+
     const currentUserId = getUserIdFromToken();
-
     const { items, meta } = await fetchListings({ page, limit });
-    totalPages = meta.totalPages || 1;
+    totalPages = meta && (meta.totalPages || meta.pages) ? (meta.totalPages || meta.pages) : 1;
 
-    // ✅ filter: hide my own listings as seller, but keep my reserved ones
-    const visible = items.filter(l => {
-      const amSeller = currentUserId && String(l.sellerId) === String(currentUserId);
-      if (amSeller) return false;
-      return true; // include all buyer-visible, including my reserved
+    // Defensive: ensure items is an array
+    const all = Array.isArray(items) ? items : [];
+
+    // Normalize ids to strings to avoid ObjectId mismatches
+    const norm = all.map(l => {
+      return Object.assign({}, l, {
+        __sellerId: l.sellerId ? String(l.sellerId) : '',
+        __buyerId: l.buyerId ? String(l.buyerId) : ''
+      });
     });
 
-    if (!visible.length) {
+    // Visible to normal buyer: available items (not my own listings as seller)
+    const available = norm.filter(l => {
+      const isMyListingAsSeller = currentUserId && l.__sellerId === String(currentUserId);
+      // If l is reserved by someone else (not me), hide it from available results
+      const reservedByOther = l.__buyerId && l.__buyerId !== String(currentUserId);
+      return !isMyListingAsSeller && !reservedByOther;
+    });
+
+    // Items reserved by *me* (so buyer can see and cancel)
+    const reservedMine = norm.filter(l => currentUserId && l.__buyerId === String(currentUserId));
+
+    // If no results show empty notice
+    if (!available.length && !reservedMine.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.innerText = 'No listings found.';
@@ -321,21 +348,29 @@
       return;
     }
 
-    visible.forEach(listing => {
-      const c = createCard(listing);
-
-      // ✅ Optional visual highlight if this is my reserved listing
-      const currentUserId = getUserIdFromToken();
-      if (listing.buyerId && String(listing.buyerId) === currentUserId) {
-        c.style.border = '2px solid #ff9800';
-        c.style.background = '#fff8e1';
-      }
-
+    // Render available items first
+    available.forEach(listing => {
+      const c = createCard(listing, { highlightReserved: false });
       grid.appendChild(c);
     });
 
+    // Then render reserved-by-me group (if any) with a small header
+    if (reservedMine.length) {
+      const header = document.createElement('div');
+      header.style.margin = '12px 0 6px';
+      header.style.fontWeight = '700';
+      header.innerText = 'Your reservations';
+      grid.appendChild(header);
+
+      reservedMine.forEach(listing => {
+        const c = createCard(listing, { highlightReserved: true });
+        grid.appendChild(c);
+      });
+    }
+
     if (pageInfo) pageInfo.innerText = `Page ${page} of ${totalPages}`;
   }
+
   // -------------------- Actions --------------------
   async function doReserve(listingId, btn) {
     if (!confirm('Reserve this listing? This will hold it for 48 hours.')) return;
