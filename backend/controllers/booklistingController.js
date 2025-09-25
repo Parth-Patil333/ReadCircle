@@ -101,7 +101,9 @@ exports.getListings = async (req, res, next) => {
       // include either available OR reserved-by-me
       filter = {
         $or: [
-          availabilityFilter,
+          // spread availabilityFilter's OR conditions by referencing the same structure
+          { buyerId: { $exists: false } },
+          { reservedUntil: { $lte: now } },
           { buyerId: requestingUserId }
         ]
       };
@@ -112,6 +114,7 @@ exports.getListings = async (req, res, next) => {
 
     // Apply text search and other filters
     if (q) {
+      // text index search (ensure you have a text index on relevant fields)
       filter.$text = { $search: q };
     }
     if (typeof minPrice !== 'undefined') {
