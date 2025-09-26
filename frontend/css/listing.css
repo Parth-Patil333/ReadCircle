@@ -249,3 +249,73 @@ body {
 .listing-card .meta { font-size: 13px; color: #6c757d; margin-bottom: 8px; }
 .listing-card .price { font-weight: 700; margin-bottom: 8px; }
 .listing-card .actions { display:flex; gap:8px; margin-top:8px; align-items:center; }
+
+/* ensure .card layout prevents overlap and reserve button is in front */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px; /* a little more gap to avoid visual overlap */
+  align-items: start;
+}
+
+/* card base */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(20,30,60,0.06);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 140px; /* ensures each card keeps enough height */
+  position: relative;
+  overflow: visible;
+}
+
+/* thumbnail fixed size and prevents overflow to neighbor card */
+.card .thumb, .card img {
+  width: 92px;
+  height: 128px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  object-fit: cover;
+  display: block;
+}
+
+/* move the image into its own container so buttons don't overlap */
+.card .body {
+  flex: 1;
+  min-width: 0; /* allow text ellipsis correctly */
+}
+
+/* ensure actions sit inside flow and clickable */
+.card .actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  z-index: 3; /* ensure buttons sit above thumbnail if stacked visually */
+  position: relative;
+}
+
+/* visual differentiation for my reserved cards */
+.card.reserved-mine {
+  border: 2px solid #f0ad4e; /* orange border */
+  background: linear-gradient(180deg, #fffef8 0%, #fff 100%);
+}
+
+/* reserved status text */
+.card .status {
+  font-size: 13px;
+  color: #b33;
+  font-weight: 600;
+}
+
+/* buttons */
+.btn { padding: 8px 10px; border-radius: 6px; border: none; cursor: pointer; }
+.btn.primary { background: #008080; color: #fff; }
+.btn.ghost, .btn.ghost:hover { background: #f3f6f7; color: #222; border: 1px solid #e6ecec; }
+
+/* ensure card image never floats over next card */
+.grid > .card { isolation: isolate; }

@@ -81,7 +81,10 @@ exports.getListings = async (req, res, next) => {
 
     // whether to include listings reserved by the requesting user
     const includeReservedMine = String(req.query.includeReservedMine || '') === '1';
-    const requestingUserId = req.user && (req.user.id || req.user._id) ? String(req.user.id || req.user._id) : null;
+    const requestingUserId =
+      req.user && (req.user.id || req.user._id)
+        ? String(req.user.id || req.user._id)
+        : null;
 
     const now = new Date();
 
@@ -98,23 +101,19 @@ exports.getListings = async (req, res, next) => {
     // - OR include listings reserved by the requesting user (if includeReservedMine)
     let filter;
     if (includeReservedMine && requestingUserId) {
-      // include either available OR reserved-by-me
       filter = {
         $or: [
-          // spread availabilityFilter's OR conditions by referencing the same structure
           { buyerId: { $exists: false } },
           { reservedUntil: { $lte: now } },
           { buyerId: requestingUserId }
         ]
       };
     } else {
-      // normal public view: only available listings
       filter = { ...availabilityFilter };
     }
 
     // Apply text search and other filters
     if (q) {
-      // text index search (ensure you have a text index on relevant fields)
       filter.$text = { $search: q };
     }
     if (typeof minPrice !== 'undefined') {
@@ -127,8 +126,19 @@ exports.getListings = async (req, res, next) => {
       filter.condition = condition;
     }
 
+    // 🔍 Debug logging
+    console.log('📥 getListings called');
+    console.log('  includeReservedMine:', includeReservedMine);
+    console.log('  requestingUserId:', requestingUserId);
+    console.log('  final MongoDB filter:', JSON.stringify(filter, null, 2));
+
     const [items, total] = await Promise.all([
-      BookListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
+      BookListing.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
       BookListing.countDocuments(filter)
     ]);
 

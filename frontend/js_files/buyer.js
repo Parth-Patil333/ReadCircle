@@ -84,6 +84,35 @@
     return;
   }
 
+  // --- Reserved-listings toggle (insert after pageInfo definition) ---
+  let showReservedOnly = false; // toggle state
+
+  // create toggle button (if page header controls exist)
+  (function ensureReservedToggle() {
+    const controls = document.querySelector('.controls');
+    // if there's already an element with this id in HTML we will use it instead
+    let reservedBtn = document.getElementById('showReservedBtn');
+    if (!reservedBtn) {
+      if (!controls) return; // graceful if header isn't present
+      reservedBtn = document.createElement('button');
+      reservedBtn.id = 'showReservedBtn';
+      reservedBtn.className = 'btn';
+      reservedBtn.innerText = 'Your reserved listings';
+      reservedBtn.style.background = '#e9ecef';
+      reservedBtn.style.color = '#111';
+      reservedBtn.style.border = '1px solid #dcdcdc';
+      controls.appendChild(reservedBtn);
+    }
+    reservedBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      showReservedOnly = !showReservedOnly;
+      reservedBtn.innerText = showReservedOnly ? 'Show all listings' : 'Your reserved listings';
+      // refetch / re-render: when toggled we ask server to include my reserved items
+      page = 1;
+      fetchAndRender();
+    });
+  })();
+
   // -------------------- Pagination state --------------------
   let page = 1;
   const limit = 12;
@@ -196,7 +225,11 @@
       const reserveBtn = document.createElement('button');
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn primary';
-      reserveBtn.addEventListener('click', () => doReserve(listing._id, reserveBtn));
+      reserveBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        doReserve(listing._id, reserveBtn);
+      });
       actions.appendChild(reserveBtn);
     } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
       // reserved by me
@@ -204,7 +237,11 @@
       const cancelBtn = document.createElement('button');
       cancelBtn.innerText = 'Cancel reservation';
       cancelBtn.className = 'btn ghost';
-      cancelBtn.addEventListener('click', () => doCancel(listing._id, cancelBtn));
+      cancelBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        doCancel(listing._id, cancelBtn);
+      });
       actions.appendChild(cancelBtn);
     } else if (amSeller) {
       const info = document.createElement('div');
@@ -241,17 +278,28 @@
     if (cond) url.searchParams.set('condition', cond);
 
     // request that server include my reserved listings (if any)
-    url.searchParams.set('includeReservedMine', '1');
+    // add includeReservedMine only if showReservedOnly is true
+    if (showReservedOnly) url.searchParams.set('includeReservedMine', '1');
 
     try {
+      // 🟢 log the final request URL
       console.log('buyer.js: fetchListings url ->', url.toString());
+
       const res = await authFetchFn(url.toString(), { method: 'GET' });
+
+      // 🟢 log the raw JSON response (clone() so we can read twice)
+      console.log(
+        'buyer.js: fetchListings response ->',
+        await res.clone().json().catch(() => ({}))
+      );
+
       if (!res.ok) {
         console.warn('fetchListings: server returned', res.status);
         return { items: [], meta: { page: p, totalPages: 1 } };
       }
+
       const body = await res.json().catch(() => ({}));
-      console.log('buyer.js: fetchListings response ->', body);
+
       // accommodate both styles: body.data may be array or { items:[], meta:{} }
       if (body && body.data && Array.isArray(body.data)) {
         return { items: body.data, meta: body.meta || { page: p, totalPages: 1 } };
@@ -260,10 +308,12 @@
       } else if (Array.isArray(body.data)) {
         return { items: body.data, meta: body.meta || { page: p, totalPages: 1 } };
       }
+
       // fallback if server returns array directly
       if (Array.isArray(body)) {
         return { items: body, meta: { page: p, totalPages: 1 } };
       }
+
       return {
         items: body.data && Array.isArray(body.data) ? body.data : (body.data || []),
         meta: body.meta || { page: p, totalPages: 1 }
@@ -273,6 +323,7 @@
       return { items: [], meta: { page: p, totalPages: 1 } };
     }
   }
+
 
   async function fetchAndRender() {
     clearGrid();
