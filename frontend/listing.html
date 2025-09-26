@@ -1,34 +1,43 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Listings — ReadCircle</title>
-
-  <!-- your site stylesheet (preferred place for full styles including reserved-mine) -->
   <link rel="stylesheet" href="css/listing.css" />
-
-  <!-- Inline fallback styles for reserved highlight (add the full snippet to css/listing.css too) -->
   <style>
-    /* minimal fallback so reserved items are visible even if listing.css wasn't updated */
-    .listing-card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 12px;
-      box-shadow: 0 6px 18px rgba(20,30,60,0.06);
+    /* Extra visual cue for reserved-by-me */
+    .card.reserved-mine {
+      border: 2px solid #f39c12;
+      background: #fff8ea;
+    }
+
+    .legend {
       display: flex;
       gap: 12px;
-      align-items: flex-start;
-      margin-bottom: 8px;
+      margin: 10px 0;
+      font-size: 13px;
+      color: #444;
     }
-    .listing-card.reserved-mine {
-      border: 2px solid #ffb564;
-      background: #fff7ef;
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .empty { padding: 18px; color:#666; font-style:italic; }
-    .actions { margin-top: 8px; display:flex; gap:8px; align-items:center; }
-    .btn { padding:8px 10px; border-radius:6px; cursor:pointer; }
-    .btn.btn-ghost { background:#f3f6f7; border:1px solid #e6ecec; }
+
+    .legend-box {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+    }
+
+    .legend-box.reserved-mine {
+      border: 2px solid #f39c12;
+      background: #fff8ea;
+    }
   </style>
 </head>
 
@@ -50,6 +59,14 @@
       </div>
     </header>
 
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-box reserved-mine"></div>
+        <span>Your reserved listings</span>
+      </div>
+    </div>
+
     <main>
       <div id="listingsGrid" class="grid"></div>
 
@@ -62,26 +79,25 @@
   </div>
 
   <script>
-    // Configure these to match your deployed backend
-    // SOCKET_URL: origin for socket.io client (no trailing slash)
-    // BASE_URL: API base used by frontend (include /api if your frontend expects it)
-    window.SOCKET_URL = "https://readcircle.onrender.com";
-    window.BASE_URL   = "https://readcircle.onrender.com/api";
+    // Backend hosts — set these to your deployed hosts
+    window.SOCKET_URL = "https://readcircle.onrender.com";   // socket origin
+    window.BASE_URL = "https://readcircle.onrender.com/api"; // API base used by frontend
   </script>
 
-  <!-- socket.io client must be loaded before any script that calls `io()` -->
+  <!-- socket.io client library -->
   <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
 
-  <!-- auth helpers (provide getToken()/authFetch() used by other scripts) -->
+  <!-- auth helpers -->
   <script src="js_files/auth.js"></script>
 
-  <!-- optional unified socket bootstrap (creates window.__rc_socket if token present) -->
+  <!-- socket bootstrap -->
   <script src="js_files/socket.js"></script>
 
-  <!-- realtime toast + notification helpers (uses socket or auth) -->
+  <!-- realtime notifications -->
   <script src="js_files/notification_socket.js"></script>
 
-  <!-- buyer logic (renders listings, reserve/cancel) -->
+  <!-- buyer logic -->
   <script src="js_files/buyer.js"></script>
 </body>
+
 </html>
