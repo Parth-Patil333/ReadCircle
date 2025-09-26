@@ -68,12 +68,6 @@ exports.createListing = async (req, res, next) => {
  * query: page, limit, q (text search), minPrice, maxPrice, condition
  * optional query: includeReservedMine=1  -> include listings reserved by the requesting user
  */
-/**
- * Get listings (public)
- * GET /api/booklisting
- * query: page, limit, q (text search), minPrice, maxPrice, condition
- * optional query: includeReservedMine=1  -> include listings reserved by the requesting user
- */
 exports.getListings = async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
@@ -91,34 +85,31 @@ exports.getListings = async (req, res, next) => {
 
     const now = new Date();
 
-    // Availability sub-condition for "available" listings (buyerId missing OR reservedUntil <= now)
-    const availableOrExpired = {
-      $or: [
-        { buyerId: { $exists: false } },
-        { reservedUntil: { $lte: now } }
-      ]
-    };
+    // Availability conditions (array) -> buyerId doesn't exist OR reservedUntil <= now
+    const availabilityOr = [
+      { buyerId: { $exists: false } },
+      { reservedUntil: { $lte: now } }
+    ];
 
-    // Build final filter:
-    // - if includeReservedMine and we have a requestingUserId -> return either available OR reserved-by-me
-    // - otherwise return only available
+    // Build base filter:
+    // - default: only available listings (the two availabilityOr conditions)
+    // - if includeReservedMine and we have a requestingUserId, allow reserved-by-me as well
     let filter;
     if (includeReservedMine && requestingUserId) {
+      // Merge available OR reserved-by-me
       filter = {
         $or: [
-          // available listings (buyer missing OR reservation expired)
-          availableOrExpired,
-          // OR listings reserved specifically by the requesting user (regardless of reservedUntil)
+          ...availabilityOr,
           { buyerId: requestingUserId }
         ]
       };
     } else {
-      filter = availableOrExpired;
+      filter = { $or: availabilityOr };
     }
 
-    // Apply other query filters on top of the above
+    // Apply text search and other filters
     if (q) {
-      // text search (ensure proper text index exists on title/author if used)
+      // text index search (ensure you have a text index on relevant fields)
       filter.$text = { $search: q };
     }
     if (typeof minPrice !== 'undefined') {
@@ -136,7 +127,7 @@ exports.getListings = async (req, res, next) => {
       BookListing.countDocuments(filter)
     ]);
 
-    const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     res.json({
       success: true,

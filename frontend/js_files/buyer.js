@@ -181,7 +181,7 @@
   // -------------------- Render helpers --------------------
   function createCard(listing) {
     const card = document.createElement('div');
-    card.className = 'card'; // match your CSS
+    card.className = 'card'; // using your .card CSS rules
 
     // thumbnail container (prevents overlap)
     const thumbWrap = document.createElement('div');
@@ -192,6 +192,8 @@
       img.alt = listing.title || 'cover';
       img.onerror = () => { img.style.opacity = '0.4'; };
       thumbWrap.appendChild(img);
+    } else {
+      thumbWrap.textContent = ''; // keep empty placeholder
     }
     card.appendChild(thumbWrap);
 
@@ -229,10 +231,12 @@
     const currentUserId = getUserIdFromToken();
     const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
 
+    // Reserve / Cancel / Info buttons and listeners
     if (!listing.buyerId && !amSeller) {
       const reserveBtn = document.createElement('button');
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn primary';
+      // ensure button is clickable (relative positioning + z-index)
       reserveBtn.style.position = 'relative';
       reserveBtn.style.zIndex = '3';
       reserveBtn.addEventListener('click', (ev) => {
@@ -240,9 +244,12 @@
         doReserve(listing._id, reserveBtn);
       });
       actions.appendChild(reserveBtn);
+
     } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
-      // reserved by me
-      card.classList.add('reserved-mine');
+      // reserved by me -> visually mark and show cancel
+      card.classList.add('reserved-mine'); // your CSS uses .reserved-mine
+
+      // add badge
       const badge = document.createElement('div');
       badge.className = 'my-reserved-badge';
       badge.innerText = 'Reserved by you';
@@ -255,19 +262,24 @@
       cancelBtn.style.zIndex = '3';
       cancelBtn.addEventListener('click', (ev) => {
         ev.stopPropagation();
+        // call the cancel function defined later in your buyer.js
         cancelReservation(listing._id, cancelBtn);
       });
       actions.appendChild(cancelBtn);
+
     } else if (amSeller) {
       const info = document.createElement('div');
       info.innerText = 'Your listing';
       actions.appendChild(info);
+
     } else {
+      // reserved by someone else
       const info = document.createElement('div');
       info.innerText = listing.buyerId ? 'Reserved' : '';
       actions.appendChild(info);
     }
 
+    // contact (if allowed)
     if (listing.sellerContact && !amSeller) {
       const contact = document.createElement('div');
       contact.className = 'contact';
@@ -278,9 +290,12 @@
     body.appendChild(actions);
     card.appendChild(body);
 
+    // accessibility: make card keyboard-focusable optionally
     card.tabIndex = 0;
+
     return card;
   }
+
 
   // -------------------- Fetch & render --------------------
   async function fetchListings(params = {}) {
@@ -304,7 +319,7 @@
       console.log('buyer.js: fetchListings url ->', url.toString());
       const res = await authFetchFn(url.toString(), { method: 'GET' });
 
-      try { console.log('buyer.js: fetchListings response ->', await res.clone().json().catch(() => ({}))); } catch (e) {}
+      try { console.log('buyer.js: fetchListings response ->', await res.clone().json().catch(() => ({}))); } catch (e) { }
 
       if (!res.ok) {
         console.warn('fetchListings: server returned', res.status);
