@@ -173,39 +173,41 @@
   }
 
   // -------------------- Render helpers --------------------
-  function clearGrid() {
-    grid.innerHTML = '';
-  }
-
-  // Create one card. currentUserId passed so renderer can decide "reserved by me" vs others.
   function createCard(listing) {
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card'; // using your .card CSS rules
 
-    const title = document.createElement('h4');
-    title.innerText = listing.title || 'Untitled';
-    card.appendChild(title);
-
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.innerText = `${listing.author ? listing.author + ' • ' : ''}${listing.condition || ''}`;
-    card.appendChild(meta);
-
+    // thumbnail container (prevents overlap)
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'thumb';
     if (Array.isArray(listing.images) && listing.images.length) {
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
       const img = document.createElement('img');
       img.src = listing.images[0];
       img.alt = listing.title || 'cover';
       img.onerror = () => { img.style.opacity = '0.4'; };
-      thumb.appendChild(img);
-      card.appendChild(thumb);
+      thumbWrap.appendChild(img);
+    } else {
+      thumbWrap.textContent = ''; // keep empty placeholder
     }
+    card.appendChild(thumbWrap);
+
+    // body container
+    const body = document.createElement('div');
+    body.className = 'body';
+
+    const title = document.createElement('h4');
+    title.innerText = listing.title || 'Untitled';
+    body.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerText = `${listing.author ? listing.author + ' • ' : ''}${listing.condition || ''}`;
+    body.appendChild(meta);
 
     const price = document.createElement('div');
     price.className = 'price';
     price.innerText = `${listing.price != null ? listing.price : ''} ${listing.currency || ''}`;
-    card.appendChild(price);
+    body.appendChild(price);
 
     const status = document.createElement('div');
     status.className = 'status';
@@ -214,25 +216,32 @@
     } else {
       status.innerText = 'Available';
     }
-    card.appendChild(status);
+    body.appendChild(status);
 
+    // actions container
     const actions = document.createElement('div');
     actions.className = 'actions';
 
     const currentUserId = getUserIdFromToken();
     const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
 
+    // Reserve / Cancel / Info buttons and listeners
     if (!listing.buyerId && !amSeller) {
       const reserveBtn = document.createElement('button');
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn primary';
-      reserveBtn.addEventListener('click', () => doReserve(listing._id, reserveBtn));
+      // ensure button is clickable (relative positioning + z-index)
+      reserveBtn.style.position = 'relative';
+      reserveBtn.style.zIndex = '3';
+      reserveBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        doReserve(listing._id, reserveBtn);
+      });
       actions.appendChild(reserveBtn);
     } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
-      // Reserved by me
-      card.classList.add('reserved-mine');
-
-      // add visual badge
+      // reserved by me -> visually mark and show cancel
+      card.classList.add('reserved-mine'); // your CSS uses .reserved-mine
+      // add badge
       const badge = document.createElement('div');
       badge.className = 'my-reserved-badge';
       badge.innerText = 'Reserved by you';
@@ -241,26 +250,38 @@
       const cancelBtn = document.createElement('button');
       cancelBtn.innerText = 'Cancel reservation';
       cancelBtn.className = 'btn ghost';
-      cancelBtn.addEventListener('click', () => doCancel(listing._id, cancelBtn));
+      cancelBtn.style.position = 'relative';
+      cancelBtn.style.zIndex = '3';
+      cancelBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        doCancel(listing._id, cancelBtn);
+      });
       actions.appendChild(cancelBtn);
     } else if (amSeller) {
       const info = document.createElement('div');
       info.innerText = 'Your listing';
       actions.appendChild(info);
     } else {
+      // reserved by someone else
       const info = document.createElement('div');
       info.innerText = listing.buyerId ? 'Reserved' : '';
       actions.appendChild(info);
     }
 
+    // contact (if allowed)
     if (listing.sellerContact && !amSeller) {
       const contact = document.createElement('div');
       contact.className = 'contact';
       contact.innerText = `Contact: ${listing.sellerContact}`;
-      card.appendChild(contact);
+      body.appendChild(contact);
     }
 
-    card.appendChild(actions);
+    body.appendChild(actions);
+    card.appendChild(body);
+
+    // accessibility: make card keyboard-focusable optionally
+    card.tabIndex = 0;
+
     return card;
   }
 

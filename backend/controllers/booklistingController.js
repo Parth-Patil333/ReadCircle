@@ -68,6 +68,12 @@ exports.createListing = async (req, res, next) => {
  * query: page, limit, q (text search), minPrice, maxPrice, condition
  * optional query: includeReservedMine=1  -> include listings reserved by the requesting user
  */
+/**
+ * Get listings (public)
+ * GET /api/booklisting
+ * query: page, limit, q (text search), minPrice, maxPrice, condition
+ * optional query: includeReservedMine=1  -> include listings reserved by the requesting user
+ */
 exports.getListings = async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
@@ -81,39 +87,38 @@ exports.getListings = async (req, res, next) => {
 
     // whether to include listings reserved by the requesting user
     const includeReservedMine = String(req.query.includeReservedMine || '') === '1';
-    const requestingUserId =
-      req.user && (req.user.id || req.user._id)
-        ? String(req.user.id || req.user._id)
-        : null;
+    const requestingUserId = req.user && (req.user.id || req.user._id) ? String(req.user.id || req.user._id) : null;
 
     const now = new Date();
 
-    // Availability filter: listing is available if buyerId missing OR reservedUntil <= now (reservation expired)
-    const availabilityFilter = {
+    // Availability sub-condition for "available" listings (buyerId missing OR reservedUntil <= now)
+    const availableOrExpired = {
       $or: [
         { buyerId: { $exists: false } },
         { reservedUntil: { $lte: now } }
       ]
     };
 
-    // Base filter will either:
-    // - include listings that meet availabilityFilter (default)
-    // - OR include listings reserved by the requesting user (if includeReservedMine)
+    // Build final filter:
+    // - if includeReservedMine and we have a requestingUserId -> return either available OR reserved-by-me
+    // - otherwise return only available
     let filter;
     if (includeReservedMine && requestingUserId) {
       filter = {
         $or: [
-          { buyerId: { $exists: false } },
-          { reservedUntil: { $lte: now } },
+          // available listings (buyer missing OR reservation expired)
+          availableOrExpired,
+          // OR listings reserved specifically by the requesting user (regardless of reservedUntil)
           { buyerId: requestingUserId }
         ]
       };
     } else {
-      filter = { ...availabilityFilter };
+      filter = availableOrExpired;
     }
 
-    // Apply text search and other filters
+    // Apply other query filters on top of the above
     if (q) {
+      // text search (ensure proper text index exists on title/author if used)
       filter.$text = { $search: q };
     }
     if (typeof minPrice !== 'undefined') {
@@ -126,25 +131,13 @@ exports.getListings = async (req, res, next) => {
       filter.condition = condition;
     }
 
-    // 🔍 Debug logging
-    console.log('📥 getListings called');
-    console.log('  includeReservedMine:', includeReservedMine);
-    console.log('  requestingUserId:', requestingUserId);
-    console.log('  final MongoDB filter:', JSON.stringify(filter, null, 2));
-
     const [items, total] = await Promise.all([
-      BookListing.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
+      BookListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
       BookListing.countDocuments(filter)
     ]);
 
-    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
 
-    // Return meta.totalPages (the frontend expects `totalPages`)
     res.json({
       success: true,
       data: items,
