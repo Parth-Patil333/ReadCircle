@@ -181,9 +181,10 @@
   // -------------------- Render helpers --------------------
   function createCard(listing) {
     const card = document.createElement('div');
-    card.className = 'card'; // using your .card CSS rules
+    card.className = 'card'; // matches your CSS
+    card.setAttribute('data-id', String(listing._id || listing.id || ''));
 
-    // thumbnail container (prevents overlap)
+    // Thumbnail container - prevents overlap with neighbors
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'thumb';
     if (Array.isArray(listing.images) && listing.images.length) {
@@ -193,11 +194,12 @@
       img.onerror = () => { img.style.opacity = '0.4'; };
       thumbWrap.appendChild(img);
     } else {
-      thumbWrap.textContent = ''; // keep empty placeholder
+      // keep placeholder so layout doesn't shift
+      thumbWrap.textContent = '';
     }
     card.appendChild(thumbWrap);
 
-    // body container
+    // Body (text + actions)
     const body = document.createElement('div');
     body.className = 'body';
 
@@ -212,7 +214,7 @@
 
     const price = document.createElement('div');
     price.className = 'price';
-    price.innerText = `${listing.price != null ? listing.price : ''} ${listing.currency || ''}`;
+    price.innerText = `${typeof listing.price !== 'undefined' && listing.price !== null ? listing.price : ''} ${listing.currency || ''}`;
     body.appendChild(price);
 
     const status = document.createElement('div');
@@ -224,46 +226,51 @@
     }
     body.appendChild(status);
 
-    // actions container
+    // Actions
     const actions = document.createElement('div');
     actions.className = 'actions';
 
     const currentUserId = getUserIdFromToken();
     const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
+    const reservedByMe = listing.buyerId && String(listing.buyerId) === String(currentUserId);
 
-    // Reserve / Cancel / Info buttons and listeners
     if (!listing.buyerId && !amSeller) {
+      // Reserve button for buyers (not seller)
       const reserveBtn = document.createElement('button');
+      reserveBtn.type = 'button';
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn primary';
-      // ensure button is clickable (relative positioning + z-index)
+      // make sure button is in front and receives clicks
       reserveBtn.style.position = 'relative';
       reserveBtn.style.zIndex = '3';
       reserveBtn.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        doReserve(listing._id, reserveBtn);
+        ev.preventDefault();
+        doReserve(listing._id || listing.id, reserveBtn);
       });
       actions.appendChild(reserveBtn);
 
-    } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
-      // reserved by me -> visually mark and show cancel
-      card.classList.add('reserved-mine'); // your CSS uses .reserved-mine
+    } else if (reservedByMe) {
+      // visually mark and show cancel
+      card.classList.add('reserved-mine');
 
-      // add badge
+      // badge (absolute positioned via CSS .my-reserved-badge)
       const badge = document.createElement('div');
       badge.className = 'my-reserved-badge';
       badge.innerText = 'Reserved by you';
       card.appendChild(badge);
 
       const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
       cancelBtn.innerText = 'Cancel reservation';
       cancelBtn.className = 'btn ghost';
       cancelBtn.style.position = 'relative';
       cancelBtn.style.zIndex = '3';
       cancelBtn.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        // call the cancel function defined later in your buyer.js
-        cancelReservation(listing._id, cancelBtn);
+        ev.preventDefault();
+        // call cancel handler; your code uses cancelReservation
+        cancelReservation(listing._id || listing.id, cancelBtn);
       });
       actions.appendChild(cancelBtn);
 
@@ -279,7 +286,7 @@
       actions.appendChild(info);
     }
 
-    // contact (if allowed)
+    // contact (if provided and not the seller)
     if (listing.sellerContact && !amSeller) {
       const contact = document.createElement('div');
       contact.className = 'contact';
@@ -290,7 +297,7 @@
     body.appendChild(actions);
     card.appendChild(body);
 
-    // accessibility: make card keyboard-focusable optionally
+    // accessibility: make card keyboard-focusable
     card.tabIndex = 0;
 
     return card;

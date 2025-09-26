@@ -75,8 +75,8 @@ exports.getListings = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     const q = req.query.q ? String(req.query.q).trim() : null;
-    const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
-    const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
+    const minPrice = (typeof req.query.minPrice !== 'undefined' && req.query.minPrice !== '') ? Number(req.query.minPrice) : undefined;
+    const maxPrice = (typeof req.query.maxPrice !== 'undefined' && req.query.maxPrice !== '') ? Number(req.query.maxPrice) : undefined;
     const condition = req.query.condition ? String(req.query.condition) : undefined;
 
     // whether to include listings reserved by the requesting user
@@ -85,18 +85,17 @@ exports.getListings = async (req, res, next) => {
 
     const now = new Date();
 
-    // Availability conditions (array) -> buyerId doesn't exist OR reservedUntil <= now
+    // Availability conditions: buyerId missing OR reservedUntil <= now (expired)
     const availabilityOr = [
       { buyerId: { $exists: false } },
       { reservedUntil: { $lte: now } }
     ];
 
     // Build base filter:
-    // - default: only available listings (the two availabilityOr conditions)
-    // - if includeReservedMine and we have a requestingUserId, allow reserved-by-me as well
+    // Default: only available listings (availabilityOr)
+    // If includeReservedMine && requestingUserId: allow either available OR buyerId === requestingUserId
     let filter;
     if (includeReservedMine && requestingUserId) {
-      // Merge available OR reserved-by-me
       filter = {
         $or: [
           ...availabilityOr,
@@ -104,18 +103,19 @@ exports.getListings = async (req, res, next) => {
         ]
       };
     } else {
+      // Only available listings
       filter = { $or: availabilityOr };
     }
 
     // Apply text search and other filters
     if (q) {
-      // text index search (ensure you have a text index on relevant fields)
+      // text index search (ensure you have a text index on title/author etc)
       filter.$text = { $search: q };
     }
-    if (typeof minPrice !== 'undefined') {
+    if (typeof minPrice !== 'undefined' && !Number.isNaN(minPrice)) {
       filter.price = Object.assign({}, filter.price || {}, { $gte: minPrice });
     }
-    if (typeof maxPrice !== 'undefined') {
+    if (typeof maxPrice !== 'undefined' && !Number.isNaN(maxPrice)) {
       filter.price = Object.assign({}, filter.price || {}, { $lte: maxPrice });
     }
     if (condition) {
@@ -127,7 +127,7 @@ exports.getListings = async (req, res, next) => {
       BookListing.countDocuments(filter)
     ]);
 
-    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
 
     res.json({
       success: true,
