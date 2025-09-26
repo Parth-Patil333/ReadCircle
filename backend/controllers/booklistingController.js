@@ -18,6 +18,12 @@ function computeReservedUntil(ms = 48 * 60 * 60 * 1000) {
   return new Date(Date.now() + ms);
 }
 
+function debugLog(...args) {
+  if (process.env.DEBUG_LISTINGS === '1') {
+    try { console.debug('[booklistingController]', ...args); } catch (e) {}
+  }
+}
+
 /**
  * Create a listing
  * POST /api/booklisting
@@ -85,9 +91,13 @@ exports.getListings = async (req, res, next) => {
 
     const now = new Date();
 
-    // Availability conditions: buyerId missing OR reservedUntil <= now (expired)
+    // Availability conditions:
+    // - buyerId does not exist
+    // - buyerId explicitly null (defensive)
+    // - reservedUntil <= now (expired)
     const availabilityOr = [
       { buyerId: { $exists: false } },
+      { buyerId: null },
       { reservedUntil: { $lte: now } }
     ];
 
@@ -121,6 +131,8 @@ exports.getListings = async (req, res, next) => {
     if (condition) {
       filter.condition = condition;
     }
+
+    debugLog('getListings filter:', JSON.stringify(filter), 'page:', page, 'limit:', limit, 'includeReservedMine:', includeReservedMine, 'requestingUserId:', requestingUserId);
 
     const [items, total] = await Promise.all([
       BookListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
@@ -249,12 +261,13 @@ exports.reserveListing = async (req, res, next) => {
 
     // Atomic check+set to avoid race
     const now = new Date();
-    // A listing is considered available if buyerId missing OR reservedUntil <= now
+    // A listing is considered available if buyerId missing OR buyerId null OR reservedUntil <= now
     const listing = await BookListing.findOneAndUpdate(
       {
         _id: id,
         $or: [
           { buyerId: { $exists: false } },
+          { buyerId: null },
           { reservedUntil: { $lte: now } }
         ]
       },
@@ -319,7 +332,7 @@ exports.confirmSale = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No active reservation to confirm' });
     }
 
-    // Confirm sale: clear reservedUntil (sold) but keep buyerId as record
+    // Confirm sale: clear reservedUntil/reservedAt (sold) but keep buyerId as record
     listing.reservedUntil = undefined;
     listing.reservedAt = undefined;
     // Optionally we can set a meta flag soldAt

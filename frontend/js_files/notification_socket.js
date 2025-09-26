@@ -1,9 +1,8 @@
 // js_files/notification_socket.js
-// Safe notifications socket helper — reuses existing window.__rc_socket if present,
-// otherwise creates its own socket (after auth.js loaded).
+// Safe notifications socket helper — reuses existing window.__rc_socket if present
 
 (function () {
-  // Small toast helper (keeps styling inline so no external CSS required)
+  // toast helper
   function createToast(text, opts = {}) {
     const containerId = 'rc_toast_container';
     let container = document.getElementById(containerId);
@@ -35,7 +34,6 @@
     }, opts.timeout || 4000);
   }
 
-  // get token helper (uses auth.js getToken if available)
   function getTokenLocal() {
     try {
       if (typeof window.getToken === 'function') return window.getToken();
@@ -45,35 +43,26 @@
     } catch (e) { return null; }
   }
 
-  // The main connect logic; will reuse window.__rc_socket if present
   function ensureSocket() {
-    // If a global socket already exists (socket.js created it), reuse it
     if (window.__rc_socket && typeof window.__rc_socket.on === 'function') {
       return window.__rc_socket;
     }
-
-    // Otherwise attempt to create one here (defensive)
     if (typeof io !== 'function') {
-      console.warn('notifications_socket: socket.io client not loaded; skipping auto-connect');
+      console.warn('notification_socket: socket.io client not loaded');
       return null;
     }
-
     const token = getTokenLocal();
     if (!token) {
-      console.warn('notifications_socket: no auth token found; not connecting socket');
+      console.warn('notification_socket: no auth token found');
       return null;
     }
-
-    // Derive origin from current location or optional window.SOCKET_URL
-    const origin = window.SOCKET_URL || (window.location.origin);
-
+    const origin = window.SOCKET_URL || window.location.origin;
     try {
-      const s = io(origin, { auth: { token: `Bearer ${token}` }, transports: ['websocket', 'polling'] });
-      // attach to window so other scripts can reuse
+      const s = io(origin, { auth: { token: `Bearer ${token}` }, transports: ['websocket'] });
       window.__rc_socket = s;
       return s;
     } catch (err) {
-      console.warn('notifications_socket: failed to create socket', err);
+      console.warn('notification_socket: failed to connect', err);
       return null;
     }
   }
@@ -81,37 +70,21 @@
   const socket = ensureSocket();
   if (!socket) return;
 
-  // show connection in console
   socket.on('connect', () => {
-    console.log('notifications: socket connected', socket.id);
+    console.log('notification_socket: connected', socket.id);
   });
-
   socket.on('connect_error', (err) => {
-    console.warn('notifications: connect_error', err && err.message ? err.message : err);
+    console.warn('notification_socket: connect_error', err && err.message ? err.message : err);
   });
 
-  // listen for the events we expect (the server emits names like listing_reserved etc.)
-  socket.on('new-listing', (payload) => {
-    createToast('New listing: ' + (payload.title || 'Untitled'));
-  });
+  // Marketplace notifications
+  socket.on('listing-created', (p) => createToast('New listing: ' + (p.title || 'Untitled')));
+  socket.on('listing-updated', (p) => createToast('Listing updated: ' + (p.title || '')));
+  socket.on('listing-deleted', () => createToast('A listing was removed'));
+  socket.on('listing_reserved', (p) => createToast('Listing reserved' + (p.listingId ? ` (${p.listingId})` : '')));
+  socket.on('listing_confirmed', (p) => createToast('Reservation confirmed' + (p.listingId ? ` (${p.listingId})` : '')));
 
-  socket.on('listing_reserved', (payload) => {
-    createToast('Listing reserved' + (payload.listingId ? ` (${payload.listingId})` : ''));
-  });
-
-  socket.on('listing_confirmed', (payload) => {
-    createToast('Reservation confirmed' + (payload.listingId ? ` (${payload.listingId})` : ''));
-  });
-
-  socket.on('listing_updated', (payload) => {
-    createToast('Listing updated' + (payload.title ? `: ${payload.title}` : ''));
-  });
-
-  socket.on('listing_deleted', () => {
-    createToast('A listing was removed');
-  });
-
-  // make available for debugging
+  // expose
   window.ReadCircleNotifications = {
     getSocket: () => socket
   };

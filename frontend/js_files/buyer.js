@@ -1,13 +1,13 @@
 // js_files/buyer.js
 // Listings browse, reserve/cancel, realtime updates
-// Cleaned and consolidated version
+// Normalizer + robust token/id handling + guarded socket handling + clearer logs
 
 (function () {
   // -------------------- Config --------------------
   const API_BASE = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
   const LISTING_ENDPOINT = `${API_BASE.replace(/\/api\/?$/, '')}/api/booklisting`.replace(/\/\/api/, '/api');
 
-  // -------------------- Auth helpers --------------------
+  // -------------------- Auth helpers (local resilient wrappers) --------------------
   function getTokenFallback() {
     try {
       if (typeof window.getToken === 'function') return window.getToken();
@@ -60,11 +60,12 @@
     return Date.now() >= p.exp * 1000;
   }
 
+  // normalized user-id getter: checks common fields in token payload
   function getUserIdFromToken() {
     const token = authGetToken();
     const p = parseJwtSafe(token || '');
     if (!p) return null;
-    return String(p.id || p._id || p.userId || '');
+    return String(p.id || p._id || p.userId || p.user_id || p._userId || '');
   }
 
   // -------------------- DOM references --------------------
@@ -160,25 +161,63 @@
   if (socket) {
     socket.on('connect', () => console.log('Socket connected (buyer):', socket.id));
     socket.on('connect_error', (err) => console.warn('buyer socket connect_error', err && (err.message || err)));
-    socket.on('listing_updated', (payload) => {
-      console.log('buyer: listing_updated', payload);
-      fetchAndRender();
-    });
-    socket.on('new-listing', (payload) => {
-      console.log('buyer: new-listing', payload);
-      fetchAndRender();
-    });
-    socket.on('listing_reserved', (payload) => {
-      console.log('buyer: listing_reserved', payload);
-      fetchAndRender();
-    });
-    socket.on('listing_confirmed', (payload) => {
-      console.log('buyer: listing_confirmed', payload);
-      fetchAndRender();
+    // listen to multiple common naming variants to be tolerant
+    const socketEvents = [
+      'listing-updated', 'listing-created', 'listing-deleted',
+      'listing_updated', 'new-listing', 'listing_reserved', 'listing_confirmed',
+      'listing-updated', 'listing-created', 'listing-deleted', 'listing_reserved'
+    ];
+    // small debounce so rapid events don't trigger many fetches
+    let socketDebounce = null;
+    const triggerFetch = () => {
+      clearTimeout(socketDebounce);
+      socketDebounce = setTimeout(() => fetchAndRender(), 250);
+    };
+    socketEvents.forEach(ev => {
+      socket.on(ev, (payload) => {
+        try { console.log('buyer:', ev, payload); } catch (e) {}
+        triggerFetch();
+      });
     });
   }
 
-  // -------------------- Render helpers --------------------
+  // -------------------- Render helpers / normalizer --------------------
+  function normalizeListing(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    // direct fields
+    const out = {};
+    out._raw = raw;
+
+    out._id = raw._id || raw.id || raw._id?.toString?.() || raw.id?.toString?.() || null;
+    out.id = out._id || (raw.id ? String(raw.id) : null);
+
+    // sellerId may be string or nested object
+    out.sellerId = (raw.sellerId && String(raw.sellerId)) ||
+                   (raw.seller && (raw.seller._id || raw.seller.id) && String(raw.seller._id || raw.seller.id)) ||
+                   (raw.seller && String(raw.seller)) || null;
+
+    // buyer/reserver detection (accept many shapes)
+    out.buyerId = (raw.buyerId && String(raw.buyerId)) ||
+                  (raw.buyer && (raw.buyer._id || raw.buyer.id) && String(raw.buyer._id || raw.buyer.id)) ||
+                  (raw.reservedBy && (raw.reservedBy._id || raw.reservedBy.id) && String(raw.reservedBy._id || raw.reservedBy.id)) ||
+                  (raw.reservedBy && String(raw.reservedBy)) ||
+                  (raw.reserved && (raw.reserved.by || raw.reserved.user) && String((raw.reserved.by || raw.reserved.user))) ||
+                  null;
+
+    // reservedUntil variations
+    out.reservedUntil = raw.reservedUntil || raw.reserved_until || (raw.reserved && raw.reserved.until) || raw.reservedUntil || null;
+
+    // standard metadata
+    out.title = raw.title || raw.name || (raw.book && raw.book.title) || 'Untitled';
+    out.author = raw.author || (raw.book && raw.book.author) || '';
+    out.condition = raw.condition || raw.state || '';
+    out.price = (typeof raw.price !== 'undefined') ? raw.price : (raw.amount || null);
+    out.currency = raw.currency || raw.currencyCode || raw.currency_code || '';
+    out.images = Array.isArray(raw.images) ? raw.images : (raw.image ? [raw.image] : (raw.images && typeof raw.images === 'string' ? [raw.images] : []));
+    out._raw = raw;
+    return out;
+  }
+
   function createCard(listing) {
     const card = document.createElement('div');
     card.className = 'card'; // matches your CSS
@@ -194,7 +233,6 @@
       img.onerror = () => { img.style.opacity = '0.4'; };
       thumbWrap.appendChild(img);
     } else {
-      // keep placeholder so layout doesn't shift
       thumbWrap.textContent = '';
     }
     card.appendChild(thumbWrap);
@@ -232,15 +270,13 @@
 
     const currentUserId = getUserIdFromToken();
     const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
-    const reservedByMe = listing.buyerId && String(listing.buyerId) === String(currentUserId);
+    const reservedByMe = listing.buyerId && currentUserId && String(listing.buyerId) === String(currentUserId);
 
     if (!listing.buyerId && !amSeller) {
-      // Reserve button for buyers (not seller)
       const reserveBtn = document.createElement('button');
       reserveBtn.type = 'button';
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn primary';
-      // make sure button is in front and receives clicks
       reserveBtn.style.position = 'relative';
       reserveBtn.style.zIndex = '3';
       reserveBtn.addEventListener('click', (ev) => {
@@ -251,10 +287,8 @@
       actions.appendChild(reserveBtn);
 
     } else if (reservedByMe) {
-      // visually mark and show cancel
       card.classList.add('reserved-mine');
 
-      // badge (absolute positioned via CSS .my-reserved-badge)
       const badge = document.createElement('div');
       badge.className = 'my-reserved-badge';
       badge.innerText = 'Reserved by you';
@@ -269,7 +303,6 @@
       cancelBtn.addEventListener('click', (ev) => {
         ev.stopPropagation();
         ev.preventDefault();
-        // call cancel handler; your code uses cancelReservation
         cancelReservation(listing._id || listing.id, cancelBtn);
       });
       actions.appendChild(cancelBtn);
@@ -280,13 +313,11 @@
       actions.appendChild(info);
 
     } else {
-      // reserved by someone else
       const info = document.createElement('div');
       info.innerText = listing.buyerId ? 'Reserved' : '';
       actions.appendChild(info);
     }
 
-    // contact (if provided and not the seller)
     if (listing.sellerContact && !amSeller) {
       const contact = document.createElement('div');
       contact.className = 'contact';
@@ -297,12 +328,11 @@
     body.appendChild(actions);
     card.appendChild(body);
 
-    // accessibility: make card keyboard-focusable
     card.tabIndex = 0;
 
     return card;
   }
-  
+
   // -------------------- Fetch & render --------------------
   async function fetchListings(params = {}) {
     const q = params.q || (searchInput ? searchInput.value : '') || '';
@@ -316,7 +346,6 @@
     if (q) url.searchParams.set('q', q);
     if (cond) url.searchParams.set('condition', cond);
 
-    // Only ask server to include my reserved listings when toggle ON
     if (showReservedOnly) {
       url.searchParams.set('includeReservedMine', '1');
     }
@@ -334,20 +363,34 @@
 
       const body = await res.json().catch(() => ({}));
 
-      if (body && body.data && Array.isArray(body.data)) {
-        return { items: body.data, meta: body.meta || { page: p, totalPages: 1, total: (body.data || []).length } };
-      }
-      if (body && body.data && body.data.items && Array.isArray(body.data.items)) {
-        return { items: body.data.items, meta: body.meta || body.data.meta || { page: p, totalPages: 1, total: (body.data.items || []).length } };
-      }
+      // Normalize common response shapes into an items array + meta
+      let items = [];
+      let meta = { page: p, totalPages: 1, total: 0 };
+
       if (Array.isArray(body)) {
-        return { items: body, meta: { page: p, totalPages: 1, total: body.length } };
+        items = body;
+      } else if (body && Array.isArray(body.data)) {
+        items = body.data;
+        meta = body.meta || meta;
+      } else if (body && body.data && Array.isArray(body.data.items)) {
+        items = body.data.items;
+        meta = body.data.meta || body.meta || meta;
+      } else if (body.success === true && Array.isArray(body.data)) {
+        items = body.data;
+        meta = body.meta || meta;
+      } else {
+        // fallback: attempt to find first array property
+        for (const k in body) {
+          if (Array.isArray(body[k])) {
+            items = body[k];
+            break;
+          }
+        }
       }
 
-      return {
-        items: body.data && Array.isArray(body.data) ? body.data : (body.data || []),
-        meta: body.meta || { page: p, totalPages: 1, total: (body.data && body.data.length) || 0 }
-      };
+      // Return canonical normalized items
+      const normalized = items.map(normalizeListing).filter(Boolean);
+      return { items: normalized, meta: meta || { page: p, totalPages: 1, total: normalized.length } };
     } catch (err) {
       console.error('fetchListings network error', err);
       return { items: [], meta: { page: p, totalPages: 1, total: 0 } };
@@ -363,9 +406,31 @@
       const totalPagesFromMeta = (meta && (meta.totalPages || meta.pages || Math.max(1, Math.ceil((meta.total || 0) / limit)))) || 1;
       totalPages = totalPagesFromMeta;
 
+      // Work with a shallow copy
       let visible = Array.isArray(items) ? items.slice() : [];
-      // exclude listings where current user is seller
-      visible = visible.filter(l => !(currentUserId && String(l.sellerId) === String(currentUserId)));
+
+      // Mark reservedByMe early and log reasons for dropping
+      visible = visible.map(l => {
+        l.reservedByMe = !!(l.buyerId && currentUserId && String(l.buyerId) === String(currentUserId));
+        l.amSeller = !!(currentUserId && l.sellerId && String(l.sellerId) === String(currentUserId));
+        return l;
+      });
+
+      // Exclude listings where current user is seller and not the reserver
+      const before = visible.length;
+      visible = visible.filter(l => {
+        if (l.amSeller && !l.reservedByMe) {
+          console.debug('buyer.js: excluding listing because user is seller and not reserver', l._id || l.id);
+          return false;
+        }
+        // If showReservedOnly is active, include only reservedByMe items
+        if (showReservedOnly && !l.reservedByMe) {
+          return false;
+        }
+        return true;
+      });
+      const after = visible.length;
+      console.debug(`buyer.js: fetchAndRender items before=${before} after=${after}`);
 
       if (!visible.length) {
         showEmptyMessage(showReservedOnly ? 'No reserved listings found.' : 'No listings found.');
@@ -452,7 +517,8 @@
   window.ReadCircleBuyer = {
     fetchAndRender,
     fetchListings,
-    getUserIdFromToken
+    getUserIdFromToken,
+    normalizeListing
   };
 
 })();

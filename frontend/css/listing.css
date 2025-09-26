@@ -196,6 +196,9 @@ body {
 .listing-card .actions { margin-top: auto; }
 
 /* --- Reserved visuals --- */
+/* css/listing.css - patched reserved visuals */
+
+/* --- Reserved visuals --- */
 .card.reserved-mine,
 .listing-card.reserved-by-me {
   border: 2px solid #0b7285;           /* teal border for my reserved */
@@ -209,9 +212,10 @@ body {
   font-weight: 700;
 }
 
+/* ensure badge shows when reserved-mine */
 .card.reserved-mine .my-reserved-badge,
 .listing-card.reserved-by-me .my-reserved-badge {
-  display: inline-block;
+  display: inline-block !important;
 }
 
 /* reserved by other */
@@ -233,7 +237,7 @@ body {
   font-size: 12px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(11,114,133,0.12);
-  display: none; /* only shown on reserved-mine via JS/class */
+  display: none; /* hidden by default until reserved-mine adds it */
 }
 
 /* ribbon for other-reserved (if you want) */
