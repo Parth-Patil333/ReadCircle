@@ -1,13 +1,13 @@
 // js_files/buyer.js
 // Listings browse, reserve/cancel, realtime updates
-// Replace your existing buyer.js with this file.
+// Cleaned and consolidated version
 
 (function () {
   // -------------------- Config --------------------
   const API_BASE = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
   const LISTING_ENDPOINT = `${API_BASE.replace(/\/api\/?$/, '')}/api/booklisting`.replace(/\/\/api/, '/api');
 
-  // -------------------- Auth helpers (no TDZ) --------------------
+  // -------------------- Auth helpers --------------------
   function getTokenFallback() {
     try {
       if (typeof window.getToken === 'function') return window.getToken();
@@ -22,12 +22,9 @@
     const options = Object.assign({}, opts);
     options.headers = Object.assign({}, options.headers || {});
 
-    // If body is an object (not FormData), stringify it and set JSON content-type
     if (typeof options.body !== 'undefined' && !(options.body instanceof FormData)) {
       if (typeof options.body === 'object') {
-        try {
-          options.body = JSON.stringify(options.body);
-        } catch (e) { /* leave as-is */ }
+        try { options.body = JSON.stringify(options.body); } catch (e) { /* ignore */ }
       }
       const hasCT = Object.keys(options.headers).some(h => h.toLowerCase() === 'content-type');
       if (!hasCT) options.headers['Content-Type'] = 'application/json';
@@ -70,7 +67,7 @@
     return String(p.id || p._id || p.userId || '');
   }
 
-  // -------------------- DOM references (defensive) --------------------
+  // -------------------- DOM references --------------------
   const grid = document.getElementById('listingsGrid');
   const searchInput = document.getElementById('searchInput');
   const conditionFilter = document.getElementById('conditionFilter');
@@ -84,16 +81,28 @@
     return;
   }
 
-  // --- Reserved-listings toggle (insert after pageInfo definition) ---
+  // -------------------- DOM helpers --------------------
+  function clearGrid() {
+    if (!grid) return;
+    grid.innerHTML = '';
+  }
+
+  function showEmptyMessage(text = 'No listings found.') {
+    clearGrid();
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerText = text;
+    grid.appendChild(empty);
+  }
+
+  // -------------------- Reserved toggle, pagination --------------------
   let showReservedOnly = false; // toggle state
 
-  // create toggle button (if page header controls exist)
   (function ensureReservedToggle() {
     const controls = document.querySelector('.controls');
-    // if there's already an element with this id in HTML we will use it instead
     let reservedBtn = document.getElementById('showReservedBtn');
     if (!reservedBtn) {
-      if (!controls) return; // graceful if header isn't present
+      if (!controls) return;
       reservedBtn = document.createElement('button');
       reservedBtn.id = 'showReservedBtn';
       reservedBtn.className = 'btn';
@@ -107,13 +116,11 @@
       ev.preventDefault();
       showReservedOnly = !showReservedOnly;
       reservedBtn.innerText = showReservedOnly ? 'Show all listings' : 'Your reserved listings';
-      // refetch / re-render: when toggled we ask server to include my reserved items
       page = 1;
       fetchAndRender();
     });
   })();
 
-  // -------------------- Pagination state --------------------
   let page = 1;
   const limit = 12;
   let totalPages = 1;
@@ -153,7 +160,6 @@
   if (socket) {
     socket.on('connect', () => console.log('Socket connected (buyer):', socket.id));
     socket.on('connect_error', (err) => console.warn('buyer socket connect_error', err && (err.message || err)));
-    // these events trigger a refresh so UI reflects server state
     socket.on('listing_updated', (payload) => {
       console.log('buyer: listing_updated', payload);
       fetchAndRender();
@@ -175,7 +181,7 @@
   // -------------------- Render helpers --------------------
   function createCard(listing) {
     const card = document.createElement('div');
-    card.className = 'card'; // using your .card CSS rules
+    card.className = 'card'; // match your CSS
 
     // thumbnail container (prevents overlap)
     const thumbWrap = document.createElement('div');
@@ -186,8 +192,6 @@
       img.alt = listing.title || 'cover';
       img.onerror = () => { img.style.opacity = '0.4'; };
       thumbWrap.appendChild(img);
-    } else {
-      thumbWrap.textContent = ''; // keep empty placeholder
     }
     card.appendChild(thumbWrap);
 
@@ -225,12 +229,10 @@
     const currentUserId = getUserIdFromToken();
     const amSeller = currentUserId && String(listing.sellerId) === String(currentUserId);
 
-    // Reserve / Cancel / Info buttons and listeners
     if (!listing.buyerId && !amSeller) {
       const reserveBtn = document.createElement('button');
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn primary';
-      // ensure button is clickable (relative positioning + z-index)
       reserveBtn.style.position = 'relative';
       reserveBtn.style.zIndex = '3';
       reserveBtn.addEventListener('click', (ev) => {
@@ -239,9 +241,8 @@
       });
       actions.appendChild(reserveBtn);
     } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
-      // reserved by me -> visually mark and show cancel
-      card.classList.add('reserved-mine'); // your CSS uses .reserved-mine
-      // add badge
+      // reserved by me
+      card.classList.add('reserved-mine');
       const badge = document.createElement('div');
       badge.className = 'my-reserved-badge';
       badge.innerText = 'Reserved by you';
@@ -254,7 +255,7 @@
       cancelBtn.style.zIndex = '3';
       cancelBtn.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        doCancel(listing._id, cancelBtn);
+        cancelReservation(listing._id, cancelBtn);
       });
       actions.appendChild(cancelBtn);
     } else if (amSeller) {
@@ -262,13 +263,11 @@
       info.innerText = 'Your listing';
       actions.appendChild(info);
     } else {
-      // reserved by someone else
       const info = document.createElement('div');
       info.innerText = listing.buyerId ? 'Reserved' : '';
       actions.appendChild(info);
     }
 
-    // contact (if allowed)
     if (listing.sellerContact && !amSeller) {
       const contact = document.createElement('div');
       contact.className = 'contact';
@@ -279,9 +278,7 @@
     body.appendChild(actions);
     card.appendChild(body);
 
-    // accessibility: make card keyboard-focusable optionally
     card.tabIndex = 0;
-
     return card;
   }
 
@@ -298,103 +295,95 @@
     if (q) url.searchParams.set('q', q);
     if (cond) url.searchParams.set('condition', cond);
 
-    // Right now it's only added when showReservedOnly is true.
-    // Change to always add it.
-    url.searchParams.set('includeReservedMine', '1');
+    // Only ask server to include my reserved listings when toggle ON
+    if (showReservedOnly) {
+      url.searchParams.set('includeReservedMine', '1');
+    }
 
     try {
-      // 🟢 log the final request URL
       console.log('buyer.js: fetchListings url ->', url.toString());
-
       const res = await authFetchFn(url.toString(), { method: 'GET' });
 
-      // 🟢 log the raw JSON response (clone() so we can read twice)
-      console.log(
-        'buyer.js: fetchListings response ->',
-        await res.clone().json().catch(() => ({}))
-      );
+      try { console.log('buyer.js: fetchListings response ->', await res.clone().json().catch(() => ({}))); } catch (e) {}
 
       if (!res.ok) {
         console.warn('fetchListings: server returned', res.status);
-        return { items: [], meta: { page: p, totalPages: 1 } };
+        return { items: [], meta: { page: p, totalPages: 1, total: 0 } };
       }
 
       const body = await res.json().catch(() => ({}));
 
-      // accommodate both styles: body.data may be array or { items:[], meta:{} }
       if (body && body.data && Array.isArray(body.data)) {
-        return { items: body.data, meta: body.meta || { page: p, totalPages: 1 } };
-      } else if (body && body.data && body.data.items && Array.isArray(body.data.items)) {
-        return { items: body.data.items, meta: body.meta || { page: p, totalPages: 1 } };
-      } else if (Array.isArray(body.data)) {
-        return { items: body.data, meta: body.meta || { page: p, totalPages: 1 } };
+        return { items: body.data, meta: body.meta || { page: p, totalPages: 1, total: (body.data || []).length } };
       }
-
-      // fallback if server returns array directly
+      if (body && body.data && body.data.items && Array.isArray(body.data.items)) {
+        return { items: body.data.items, meta: body.meta || body.data.meta || { page: p, totalPages: 1, total: (body.data.items || []).length } };
+      }
       if (Array.isArray(body)) {
-        return { items: body, meta: { page: p, totalPages: 1 } };
+        return { items: body, meta: { page: p, totalPages: 1, total: body.length } };
       }
 
       return {
         items: body.data && Array.isArray(body.data) ? body.data : (body.data || []),
-        meta: body.meta || { page: p, totalPages: 1 }
+        meta: body.meta || { page: p, totalPages: 1, total: (body.data && body.data.length) || 0 }
       };
     } catch (err) {
       console.error('fetchListings network error', err);
-      return { items: [], meta: { page: p, totalPages: 1 } };
+      return { items: [], meta: { page: p, totalPages: 1, total: 0 } };
     }
   }
 
-
   async function fetchAndRender() {
-    clearGrid();
-    const currentUserId = getUserIdFromToken();
-    const { items, meta } = await fetchListings({ page, limit });
-    totalPages = (meta && (meta.totalPages || meta.pages || meta.totalPages === 0 ? meta.totalPages : meta.pages)) || 1;
+    try {
+      clearGrid();
+      const currentUserId = getUserIdFromToken();
 
-    // Filter out listings where you are the seller (buyers shouldn't see their own listings in browse)
-    const visible = items.filter(l => !(currentUserId && String(l.sellerId) === String(currentUserId)));
+      const { items, meta } = await fetchListings({ page, limit });
+      const totalPagesFromMeta = (meta && (meta.totalPages || meta.pages || Math.max(1, Math.ceil((meta.total || 0) / limit)))) || 1;
+      totalPages = totalPagesFromMeta;
 
-    if (!visible.length) {
-      const empty = document.createElement('div');
-      empty.className = 'empty';
-      empty.innerText = 'No listings found.';
-      grid.appendChild(empty);
+      let visible = Array.isArray(items) ? items.slice() : [];
+      // exclude listings where current user is seller
+      visible = visible.filter(l => !(currentUserId && String(l.sellerId) === String(currentUserId)));
+
+      if (!visible.length) {
+        showEmptyMessage(showReservedOnly ? 'No reserved listings found.' : 'No listings found.');
+        if (pageInfo) pageInfo.innerText = `Page ${page} of ${totalPages}`;
+        return;
+      }
+
+      visible.forEach(listing => {
+        const card = createCard(listing);
+        grid.appendChild(card);
+      });
+
       if (pageInfo) pageInfo.innerText = `Page ${page} of ${totalPages}`;
-      return;
+    } catch (err) {
+      console.error('fetchAndRender error', err);
+      showEmptyMessage('Error loading listings.');
+      if (pageInfo) pageInfo.innerText = `Page ${page} of ${totalPages}`;
     }
-
-    visible.forEach(listing => {
-      const card = createCard(listing, currentUserId);
-      grid.appendChild(card);
-    });
-
-    if (pageInfo) pageInfo.innerText = `Page ${page} of ${totalPages}`;
   }
 
   // -------------------- Actions --------------------
   async function doReserve(listingId, btn) {
     if (!confirm('Reserve this listing? This will hold it for 48 hours.')) return;
     try {
-      btn.disabled = true;
-      btn.innerText = 'Reserving...';
+      if (btn) { btn.disabled = true; btn.innerText = 'Reserving...'; }
       const res = await authFetchFn(`${LISTING_ENDPOINT}/${listingId}/reserve`, { method: 'POST' });
       const bodyText = await res.text();
       let body;
       try { body = JSON.parse(bodyText); } catch (e) { body = { raw: bodyText }; }
       if (!res.ok) {
         alert((body && body.message) || 'Failed to reserve listing');
-        btn.disabled = false;
-        btn.innerText = 'Reserve';
+        if (btn) { btn.disabled = false; btn.innerText = 'Reserve'; }
         return;
       }
-      // success
-      fetchAndRender();
+      await fetchAndRender();
     } catch (err) {
       console.error('reserve error', err);
       alert('Network error while reserving');
-      btn.disabled = false;
-      btn.innerText = 'Reserve';
+      if (btn) { btn.disabled = false; btn.innerText = 'Reserve'; }
     }
   }
 
@@ -411,7 +400,7 @@
         if (btn) { btn.disabled = false; btn.innerText = 'Cancel reservation'; }
         return;
       }
-      fetchAndRender();
+      await fetchAndRender();
     } catch (err) {
       console.error('cancel error', err);
       alert('Network error while cancelling');
@@ -441,6 +430,7 @@
   // expose for debugging
   window.ReadCircleBuyer = {
     fetchAndRender,
+    fetchListings,
     getUserIdFromToken
   };
 
