@@ -302,8 +302,7 @@
 
     return card;
   }
-
-
+  
   // -------------------- Fetch & render --------------------
   async function fetchListings(params = {}) {
     const q = params.q || (searchInput ? searchInput.value : '') || '';
