@@ -180,7 +180,7 @@
   // Create one card. currentUserId passed so renderer can decide "reserved by me" vs others.
   function createCard(listing) {
     const card = document.createElement('div');
-    card.className = 'card'; // use consistent .card from CSS
+    card.className = 'card';
 
     const title = document.createElement('h4');
     title.innerText = listing.title || 'Untitled';
@@ -192,13 +192,14 @@
     card.appendChild(meta);
 
     if (Array.isArray(listing.images) && listing.images.length) {
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
       const img = document.createElement('img');
       img.src = listing.images[0];
       img.alt = listing.title || 'cover';
-      img.style.maxWidth = '120px';
-      img.style.display = 'block';
       img.onerror = () => { img.style.opacity = '0.4'; };
-      card.appendChild(img);
+      thumb.appendChild(img);
+      card.appendChild(thumb);
     }
 
     const price = document.createElement('div');
@@ -225,23 +226,22 @@
       const reserveBtn = document.createElement('button');
       reserveBtn.innerText = 'Reserve';
       reserveBtn.className = 'btn primary';
-      reserveBtn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        ev.preventDefault();
-        doReserve(listing._id, reserveBtn);
-      });
+      reserveBtn.addEventListener('click', () => doReserve(listing._id, reserveBtn));
       actions.appendChild(reserveBtn);
     } else if (listing.buyerId && String(listing.buyerId) === currentUserId) {
-      // reserved by me
+      // Reserved by me
       card.classList.add('reserved-mine');
+
+      // add visual badge
+      const badge = document.createElement('div');
+      badge.className = 'my-reserved-badge';
+      badge.innerText = 'Reserved by you';
+      card.appendChild(badge);
+
       const cancelBtn = document.createElement('button');
       cancelBtn.innerText = 'Cancel reservation';
       cancelBtn.className = 'btn ghost';
-      cancelBtn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        ev.preventDefault();
-        doCancel(listing._id, cancelBtn);
-      });
+      cancelBtn.addEventListener('click', () => doCancel(listing._id, cancelBtn));
       actions.appendChild(cancelBtn);
     } else if (amSeller) {
       const info = document.createElement('div');
@@ -277,9 +277,9 @@
     if (q) url.searchParams.set('q', q);
     if (cond) url.searchParams.set('condition', cond);
 
-    // request that server include my reserved listings (if any)
-    // add includeReservedMine only if showReservedOnly is true
-    if (showReservedOnly) url.searchParams.set('includeReservedMine', '1');
+    // Right now it's only added when showReservedOnly is true.
+    // Change to always add it.
+    url.searchParams.set('includeReservedMine', '1');
 
     try {
       // 🟢 log the final request URL

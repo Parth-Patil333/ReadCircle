@@ -1,6 +1,8 @@
-/* listing.css */
+/* listing.css - updated to prevent button/image overlap and show reserved visuals */
+
+/* --- Base layout --- */
 body {
-  font-family: Inter, system-ui, Arial;
+  font-family: Inter, system-ui, Arial, sans-serif;
   background: #f4f6f8;
   margin: 0;
   color: #222;
@@ -12,6 +14,7 @@ body {
   padding: 14px;
 }
 
+/* --- Topbar / controls --- */
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -47,67 +50,60 @@ body {
   cursor: pointer;
 }
 
+/* --- Grid --- */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 16px;
+  align-items: start;
 }
 
-/* .listing-card used by buyer.js createCard() */
-.listing-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 6px 18px rgba(20,30,60,0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-  min-height: 120px;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-.listing-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(20,30,60,0.08);
-}
+/* ensure card image never floats over next card */
+.grid > .card { isolation: isolate; }
 
-/* reserved highlight (used by JS: add .reserved to the card) */
-.listing-card.reserved {
-  border: 2px solid #ff9800;
-  background: #fff8e1;
-}
-
-/* legacy .card rules preserved for other pages */
+/* --- Card (vertical layout to avoid overlap) --- */
 .card {
   background: #fff;
   border-radius: 8px;
   padding: 12px;
   box-shadow: 0 6px 18px rgba(20,30,60,0.06);
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  flex-direction: column;      /* stack image, text, actions vertically */
+  gap: 8px;
+  align-items: stretch;
+  min-height: 220px;           /* give room so image + buttons fit */
+  position: relative;
+  overflow: hidden;
 }
 
+/* Thumbnail area (keeps image contained) */
 .card .thumb {
-  width: 92px;
-  height: 128px;
+  width: 100%;
+  height: 160px;
   border-radius: 6px;
   overflow: hidden;
   background: #f0f2f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.card .thumb img {
+.card .thumb img,
+.card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
+/* Body area (text) */
 .card .body {
-  flex: 1;
+  display: block;
+  min-width: 0; /* allows proper truncation */
 }
 
-.card h3 {
+.card h3, .listing-card h4 {
   margin: 0 0 6px 0;
   font-size: 16px;
 }
@@ -123,43 +119,29 @@ body {
   margin-bottom: 8px;
 }
 
-.listing-card img,
-.card img {
-  max-width: 120px;
-  border-radius: 6px;
-  display: block;
-}
-
-.listing-card h4,
-.card h3 {
-  margin: 0 0 6px 0;
-  font-size: 16px;
-}
-
-.listing-card .meta,
-.card .meta {
-  font-size: 13px;
-  color: #6c757d;
-}
-
-.card .actions,
-.listing-card .actions {
+/* Actions sit at bottom of card */
+.card .actions {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-top: 8px;
+  margin-top: auto; /* push actions to bottom */
+  z-index: 3;
+  position: relative;
 }
 
+/* Buttons */
 .btn {
   padding: 8px 10px;
   border-radius: 6px;
   border: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .btn.primary { background: #008080; color: white; }
 .btn.ghost { background: #f3f6f7; color: #222; border: 1px solid #e6ecec; }
 
+/* Small / helper */
 .small { font-size: 13px; padding: 6px 8px; }
 
 .countdown {
@@ -168,6 +150,7 @@ body {
   font-weight: 600;
 }
 
+/* Contact badge */
 .contact {
   font-size: 13px;
   color: #155724;
@@ -177,6 +160,7 @@ body {
   display: inline-block;
 }
 
+/* Pager */
 .pager {
   display: flex;
   justify-content: center;
@@ -184,34 +168,54 @@ body {
   margin-top: 16px;
 }
 
-
-/* reserved visuals */
+/* --- Listing-card (alternate naming kept, in case other code uses it) --- */
 .listing-card {
+  /* preserve same look, but keep vertical stacking too */
   background: #fff;
   border-radius: 8px;
   padding: 12px;
   box-shadow: 0 6px 18px rgba(20,30,60,0.06);
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  position: relative;
-  transition: box-shadow .18s, transform .12s;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  min-height: 220px;
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
+.listing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(20,30,60,0.08);
+}
+.listing-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 6px;
+  display:block;
+}
+.listing-card .actions { margin-top: auto; }
 
-.listing-card:hover { transform: translateY(-2px); }
-
-/* thumb and body layout */
-.listing-card .thumb { width: 92px; height: 128px; border-radius: 6px; overflow: hidden; background: #f0f2f4; flex-shrink: 0; display:flex; align-items:center; justify-content:center; }
-.listing-card .thumb img { width:100%; height:100%; object-fit:cover; }
-
-/* reserved-by-me */
+/* --- Reserved visuals --- */
+.card.reserved-mine,
 .listing-card.reserved-by-me {
-  border: 2px solid #0b7285;           /* teal border */
-  background: linear-gradient(180deg, #f6fffe, #ffffff); /* gentle tint */
+  border: 2px solid #0b7285;           /* teal border for my reserved */
+  background: linear-gradient(180deg, #f6fffe, #ffffff);
   box-shadow: 0 8px 26px rgba(11,114,133,0.06);
 }
 
+.card.reserved-mine .status,
+.listing-card.reserved-by-me .status {
+  color: #0b7285;
+  font-weight: 700;
+}
+
+.card.reserved-mine .my-reserved-badge,
+.listing-card.reserved-by-me .my-reserved-badge {
+  display: inline-block;
+}
+
 /* reserved by other */
+.card.reserved-other,
 .listing-card.reserved-by-other {
   border: 1px dashed #c7c7c7;
   opacity: 0.95;
@@ -229,9 +233,10 @@ body {
   font-size: 12px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(11,114,133,0.12);
+  display: none; /* only shown on reserved-mine via JS/class */
 }
 
-/* ribbon for other-reserved */
+/* ribbon for other-reserved (if you want) */
 .ribbon.reserved-other {
   position: absolute;
   right: 8px;
@@ -243,79 +248,18 @@ body {
   font-size: 12px;
 }
 
-/* body layout adjustments used above */
-.listing-card .body { flex: 1; }
-.listing-card h3 { margin: 0 0 6px 0; font-size: 16px; }
-.listing-card .meta { font-size: 13px; color: #6c757d; margin-bottom: 8px; }
-.listing-card .price { font-weight: 700; margin-bottom: 8px; }
-.listing-card .actions { display:flex; gap:8px; margin-top:8px; align-items:center; }
-
-/* ensure .card layout prevents overlap and reserve button is in front */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px; /* a little more gap to avoid visual overlap */
-  align-items: start;
-}
-
-/* card base */
-.card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 6px 18px rgba(20,30,60,0.06);
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  min-height: 140px; /* ensures each card keeps enough height */
-  position: relative;
-  overflow: visible;
-}
-
-/* thumbnail fixed size and prevents overflow to neighbor card */
-.card .thumb, .card img {
-  width: 92px;
-  height: 128px;
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-  object-fit: cover;
-  display: block;
-}
-
-/* move the image into its own container so buttons don't overlap */
-.card .body {
-  flex: 1;
-  min-width: 0; /* allow text ellipsis correctly */
-}
-
-/* ensure actions sit inside flow and clickable */
-.card .actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 8px;
-  z-index: 3; /* ensure buttons sit above thumbnail if stacked visually */
-  position: relative;
-}
-
-/* visual differentiation for my reserved cards */
-.card.reserved-mine {
-  border: 2px solid #f0ad4e; /* orange border */
-  background: linear-gradient(180deg, #fffef8 0%, #fff 100%);
-}
-
-/* reserved status text */
+/* status text */
 .card .status {
   font-size: 13px;
   color: #b33;
   font-weight: 600;
 }
 
-/* buttons */
-.btn { padding: 8px 10px; border-radius: 6px; border: none; cursor: pointer; }
-.btn.primary { background: #008080; color: #fff; }
-.btn.ghost, .btn.ghost:hover { background: #f3f6f7; color: #222; border: 1px solid #e6ecec; }
-
-/* ensure card image never floats over next card */
+/* keep images from visually overlapping neighbours */
 .grid > .card { isolation: isolate; }
+
+/* small responsive tweak */
+@media (max-width: 520px) {
+  .card, .listing-card { min-height: 200px; padding: 10px; }
+  .card .thumb, .listing-card img { height: 140px; }
+}
