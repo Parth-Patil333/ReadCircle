@@ -1,7 +1,6 @@
 // js_files/buyer.js
 // Listings browse, reserve/cancel, realtime updates
 // Normalizer + robust token/id handling + guarded socket handling + clearer logs
-
 (function () {
   // -------------------- Config --------------------
   const API_BASE = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
@@ -182,30 +181,83 @@
   }
 
   // -------------------- Render helpers / normalizer --------------------
+
+  // Helper: deep-search raw object for keys that look like an id
+  function findIdInRaw(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    const idKeys = ['buyerId','buyer_id','buyer','reservedBy','reserved_by','reserved_by_id','reservedById','reserved','reserver','reserverId','reserver_id','reserved_by_user','reservedUser','reserved_user','reserved_user_id','reserved_id','reservedId','by','user','userId','user_id'];
+    // check direct keys first
+    for (const k of idKeys) {
+      if (k in obj) {
+        const v = obj[k];
+        if (!v) continue;
+        if (typeof v === 'string' && v.length) return v;
+        if (typeof v === 'number') return String(v);
+        if (typeof v === 'object') {
+          // object may have _id or id
+          if (v._id) return String(v._id);
+          if (v.id) return String(v.id);
+          if (v.userId) return String(v.userId);
+        }
+      }
+    }
+    // shallow recursive search (one level) to find reservation-like shapes
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val && typeof val === 'object') {
+        for (const k of idKeys) {
+          if (k in val) {
+            const v2 = val[k];
+            if (!v2) continue;
+            if (typeof v2 === 'string') return v2;
+            if (typeof v2 === 'number') return String(v2);
+            if (typeof v2 === 'object') {
+              if (v2._id) return String(v2._id);
+              if (v2.id) return String(v2.id);
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   function normalizeListing(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    // direct fields
     const out = {};
     out._raw = raw;
 
-    out._id = raw._id || raw.id || raw._id?.toString?.() || raw.id?.toString?.() || null;
+    // id fields
+    out._id = raw._id || raw.id || (raw._id && String(raw._id)) || (raw.id && String(raw.id)) || null;
     out.id = out._id || (raw.id ? String(raw.id) : null);
 
-    // sellerId may be string or nested object
-    out.sellerId = (raw.sellerId && String(raw.sellerId)) ||
-                   (raw.seller && (raw.seller._id || raw.seller.id) && String(raw.seller._id || raw.seller.id)) ||
-                   (raw.seller && String(raw.seller)) || null;
+    // sellerId detection (string or nested object)
+    out.sellerId = null;
+    if (raw.sellerId) out.sellerId = String(raw.sellerId);
+    else if (raw.seller && (raw.seller._id || raw.seller.id)) out.sellerId = String(raw.seller._id || raw.seller.id);
+    else if (raw.seller) out.sellerId = String(raw.seller);
+    else if (raw.owner && (raw.owner._id || raw.owner.id)) out.sellerId = String(raw.owner._id || raw.owner.id);
 
-    // buyer/reserver detection (accept many shapes)
-    out.buyerId = (raw.buyerId && String(raw.buyerId)) ||
-                  (raw.buyer && (raw.buyer._id || raw.buyer.id) && String(raw.buyer._id || raw.buyer.id)) ||
-                  (raw.reservedBy && (raw.reservedBy._id || raw.reservedBy.id) && String(raw.reservedBy._id || raw.reservedBy.id)) ||
-                  (raw.reservedBy && String(raw.reservedBy)) ||
-                  (raw.reserved && (raw.reserved.by || raw.reserved.user) && String((raw.reserved.by || raw.reserved.user))) ||
-                  null;
+    // buyer/reserver detection - broad search
+    let buyer = null;
+    if (raw.buyerId) buyer = raw.buyerId;
+    else if (raw.buyer && (raw.buyer._id || raw.buyer.id)) buyer = raw.buyer._id || raw.buyer.id;
+    else if (raw.reservedBy) {
+      if (typeof raw.reservedBy === 'string') buyer = raw.reservedBy;
+      else if (raw.reservedBy._id) buyer = raw.reservedBy._id;
+      else if (raw.reservedBy.id) buyer = raw.reservedBy.id;
+    } else if (raw.reserved && typeof raw.reserved === 'object') {
+      // { reserved: { by: { _id... } } } or { reserved: { buyerId: '...' } }
+      buyer = findIdInRaw(raw.reserved) || null;
+    }
+
+    // fallback: deep-search common keys across object
+    if (!buyer) buyer = findIdInRaw(raw);
+
+    out.buyerId = buyer ? String(buyer) : null;
 
     // reservedUntil variations
-    out.reservedUntil = raw.reservedUntil || raw.reserved_until || (raw.reserved && raw.reserved.until) || raw.reservedUntil || null;
+    out.reservedUntil = raw.reservedUntil || raw.reserved_until || (raw.reserved && raw.reserved.until) || raw.expiry || raw.holdExpires || null;
 
     // standard metadata
     out.title = raw.title || raw.name || (raw.book && raw.book.title) || 'Untitled';
@@ -214,6 +266,8 @@
     out.price = (typeof raw.price !== 'undefined') ? raw.price : (raw.amount || null);
     out.currency = raw.currency || raw.currencyCode || raw.currency_code || '';
     out.images = Array.isArray(raw.images) ? raw.images : (raw.image ? [raw.image] : (raw.images && typeof raw.images === 'string' ? [raw.images] : []));
+    out.sellerContact = raw.sellerContact || raw.contact || raw.seller_contact || raw.sellerPhone || raw.contactInfo || null;
+
     out._raw = raw;
     return out;
   }
@@ -423,7 +477,6 @@
           console.debug('buyer.js: excluding listing because user is seller and not reserver', l._id || l.id);
           return false;
         }
-        // If showReservedOnly is active, include only reservedByMe items
         if (showReservedOnly && !l.reservedByMe) {
           return false;
         }
