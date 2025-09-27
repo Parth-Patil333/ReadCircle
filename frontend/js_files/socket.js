@@ -1,22 +1,38 @@
 // js_files/socket.js
 // ReadCircle: unified Socket.IO client
-// - Marketplace events (including reserved/confirmed)
-// - Inventory updates
-// - Lending events
-// - Notifications
+// - Listens for marketplace (listing) events, inventory updates, lending events, and notifications.
+// - Save as frontend/js_files/socket.js
+// - Assumes login saved token to localStorage/sessionStorage under common keys (token/authToken/jwt/accessToken)
 
 (function () {
-  const BASE_URL = (typeof window !== 'undefined' && window.BASE_URL)
-    ? window.BASE_URL
-    : "https://readcircle.onrender.com/api";
+  // --- config ---
+  // derive BASE_URL from window if set, otherwise default
+  // --- config (update / paste at top of js_files/socket.js) ---
+  const BASE_URL = (typeof window !== 'undefined' && window.BASE_URL) ? window.BASE_URL : "https://readcircle.onrender.com/api";
+  // Prefer explicit override, otherwise derive from BASE_URL; fallback to current origin
   const SOCKET_URL = window.SOCKET_URL || (String(BASE_URL).replace(/\/api\/?$/, '')) || window.location.origin;
 
+  // Connection options - keep reconnection attempts bounded during testing
+  const socketOptions = {
+    auth: { token: `Bearer ${(function () { try { return (localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (e) { return ''; } })()}` },
+    transports: ['websocket'],
+    autoConnect: true,
+    reconnectionAttempts: 8,        // stop retrying after X attempts
+    reconnectionDelay: 1000,        // ms
+    reconnectionDelayMax: 5000
+  };
+
+  // then later where you call io(...), use:
+  // const socket = io(SOCKET_URL, socketOptions);
+
+  // --- auth token (same logic used elsewhere) ---
   function getToken() {
     const keys = ['token', 'authToken', 'jwt', 'accessToken'];
     for (const k of keys) {
       const v = localStorage.getItem(k) || sessionStorage.getItem(k);
       if (v) return v;
     }
+    // cookie fallback
     const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
     if (match) return decodeURIComponent(match[1]);
     return null;
@@ -29,12 +45,14 @@
     return;
   }
 
+  // ensure socket.io client lib is loaded
   if (typeof io !== 'function') {
     console.error('socket.js: socket.io client lib not loaded. Include CDN before socket.js');
     window.__rc_socket = null;
     return;
   }
 
+  // connect using handshake auth (server verifies token in handshake.auth.token)
   const socket = io(SOCKET_URL, {
     auth: { token: `Bearer ${token}` },
     transports: ['websocket'],
@@ -48,14 +66,16 @@
   socket.on('connect', () => {
     console.log('ReadCircle socket connected', socket.id);
   });
+
   socket.on('disconnect', (reason) => {
     console.warn('ReadCircle socket disconnected', reason);
   });
+
   socket.on('connect_error', (err) => {
     console.error('ReadCircle socket connect_error', err && (err.message || err));
   });
 
-  // --- Marketplace / Listing events ---
+  // --- Marketplace / Listing events (existing) ---
   socket.on('listing-created', (payload) => {
     console.log('listing-created', payload);
     if (typeof window.onListingCreated === 'function') {
@@ -88,18 +108,10 @@
     document.dispatchEvent(new CustomEvent('rc:purchase-made', { detail: payload }));
   });
 
-  // --- NEW: Reserved/Confirmed events ---
-  socket.on('listing_reserved', (payload) => {
-    console.log('listing_reserved', payload);
-    document.dispatchEvent(new CustomEvent('rc:listing-reserved', { detail: payload }));
-  });
-
-  socket.on('listing_confirmed', (payload) => {
-    console.log('listing_confirmed', payload);
-    document.dispatchEvent(new CustomEvent('rc:listing-confirmed', { detail: payload }));
-  });
-
-  // --- Inventory events ---
+  // --- Inventory events (new) ---
+  // payload examples:
+  // { type: 'book-added', userId, book: { id, title, author } }
+  // { type: 'book-deleted', userId, bookId }
   socket.on('inventory-updated', (payload) => {
     console.log('inventory-updated', payload);
     if (typeof window.onInventoryUpdated === 'function') {
@@ -108,7 +120,10 @@
     document.dispatchEvent(new CustomEvent('rc:inventory-updated', { detail: payload }));
   });
 
-  // --- Lending events ---
+  // --- Lending events (new) ---
+  // lending:created -> { lending: { ... } }
+  // lending:updated -> { lending: { ... } }
+  // lending:deleted -> { id: '...' }
   socket.on('lending:created', (payload) => {
     console.log('lending:created', payload);
     if (typeof window.onLendingCreated === 'function') {
@@ -133,14 +148,17 @@
     document.dispatchEvent(new CustomEvent('rc:lending-deleted', { detail: payload }));
   });
 
-  // --- Notifications ---
+  // --- Generic notifications (already used by backend) ---
   socket.on('notification', (payload) => {
     console.log('notification', payload);
+    // page-level hook
     if (typeof window.onNotification === 'function') {
       try { window.onNotification(payload); } catch (e) { console.error(e); }
     }
+    // dispatch a generic event for in-page handlers
     document.dispatchEvent(new CustomEvent('rc:notification', { detail: payload }));
   });
 
+  // expose socket for page scripts and debugging
   window.__rc_socket = socket;
 })();

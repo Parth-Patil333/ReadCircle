@@ -6,39 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Listings — ReadCircle</title>
   <link rel="stylesheet" href="css/listing.css" />
-  <style>
-    /* Extra visual cue for reserved-by-me */
-    .card.reserved-mine {
-      border: 2px solid #f39c12;
-      background: #fff8ea;
-    }
-
-    .legend {
-      display: flex;
-      gap: 12px;
-      margin: 10px 0;
-      font-size: 13px;
-      color: #444;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .legend-box {
-      width: 16px;
-      height: 16px;
-      border-radius: 3px;
-      border: 1px solid #ccc;
-    }
-
-    .legend-box.reserved-mine {
-      border: 2px solid #f39c12;
-      background: #fff8ea;
-    }
-  </style>
 </head>
 
 <body>
@@ -59,14 +26,6 @@
       </div>
     </header>
 
-    <!-- Legend -->
-    <div class="legend">
-      <div class="legend-item">
-        <div class="legend-box reserved-mine"></div>
-        <span>Your reserved listings</span>
-      </div>
-    </div>
-
     <main>
       <div id="listingsGrid" class="grid"></div>
 
@@ -80,23 +39,23 @@
 
   <script>
     // Backend hosts — set these to your deployed hosts
-    window.SOCKET_URL = "https://readcircle.onrender.com";   // socket origin
-    window.BASE_URL = "https://readcircle.onrender.com/api"; // API base used by frontend
+    window.SOCKET_URL = "https://readcircle.onrender.com";            // socket origin (no trailing /)
+    window.BASE_URL = "https://readcircle.onrender.com/api";         // API base used by frontend
   </script>
 
-  <!-- socket.io client library -->
+  <!-- socket.io client library (must come before any socket.js) -->
   <script src="https://readcircle.onrender.com/socket.io/socket.io.js"></script>
 
-  <!-- auth helpers -->
+  <!-- auth helpers (must be loaded before socket bootstrap so socket can use token) -->
   <script src="js_files/auth.js"></script>
 
-  <!-- socket bootstrap -->
+  <!-- central socket bootstrap (creates window.__rc_socket if token present) -->
   <script src="js_files/socket.js"></script>
 
-  <!-- realtime notifications -->
+  <!-- realtime toast notifications (uses socket or auth) -->
   <script src="js_files/notification_socket.js"></script>
 
-  <!-- buyer logic -->
+  <!-- buyer logic (fetch + render + actions) -->
   <script src="js_files/buyer.js"></script>
 </body>
 

@@ -1,10 +1,5 @@
 // cron/cleanup.js
-// Improved cleanup: archive instead of hard delete
-// - Clears reservation fields when expired
-// - Adds meta.reservationExpiredAt
-// - Emits events to notify buyer, seller, and broadcast listings
-// - Use env CLEANUP_DELETE=1 to restore old hard-delete behavior
-
+// @ts-nocheck
 const cron = require('node-cron');
 const BookListing = require('../models/BookListing');
 const notify = require('../utils/notify');
@@ -25,14 +20,13 @@ async function runCleanupOnce() {
     }).exec();
 
     if (!expired || expired.length === 0) {
-      console.log('🧹 Cleanup: No expired reserved listings to process.');
+      console.log('🧹 Cleanup: No expired reserved listings to delete.');
       return { processed: 0, listings: [] };
     }
 
-    console.log(`🧹 Cleanup: Found ${expired.length} expired reserved listing(s).`);
+    console.log(`🧹 Cleanup: Found ${expired.length} expired reserved listing(s) to delete.`);
 
     const processed = [];
-    const hardDelete = process.env.CLEANUP_DELETE === '1';
 
     for (const listing of expired) {
       const listingId = listing._id;
@@ -40,43 +34,32 @@ async function runCleanupOnce() {
       const sellerId = listing.sellerId ? String(listing.sellerId) : null;
 
       try {
-        if (hardDelete) {
-          await BookListing.deleteOne({ _id: listingId });
-          console.log(`🧹 Cleanup: Hard deleted expired listing ${listingId}`);
-        } else {
-          // Archive mode: clear buyer/reservation, add meta.reservationExpiredAt
-          listing.buyerId = undefined;
-          listing.reservedAt = undefined;
-          listing.reservedUntil = undefined;
-          listing.meta = listing.meta || {};
-          listing.meta.reservationExpiredAt = new Date();
-          await listing.save();
-          console.log(`🧹 Cleanup: Cleared expired reservation on listing ${listingId}`);
-        }
+        await BookListing.deleteOne({ _id: listingId });
 
         // Emit notifications (best-effort)
         try {
           if (oldBuyerId) {
             notify.user(null, oldBuyerId, 'listing_cancelled', {
               listingId,
-              reason: hardDelete ? 'reservation_expired_deleted' : 'reservation_expired_cleared'
+              reason: 'reservation_expired_deleted'
             });
           }
           if (sellerId) {
-            notify.user(null, sellerId, hardDelete ? 'reservation_expired_deleted' : 'reservation_expired_cleared', { listingId });
+            notify.user(null, sellerId, 'reservation_expired_deleted', { listingId });
           }
-          notify.broadcastListings(null, hardDelete ? 'listing_deleted' : 'listing_updated', hardDelete ? { id: listingId } : listing.toObject());
+          notify.broadcastListings(null, 'listing_deleted', { id: listingId });
         } catch (emitErr) {
           console.warn('Cleanup: notify emit failed for listing', listingId, emitErr && emitErr.message ? emitErr.message : emitErr);
         }
 
+        console.log(`🧹 Cleanup: Deleted expired listing ${listingId}`);
         processed.push(String(listingId));
       } catch (delErr) {
-        console.error(`❌ Cleanup: Failed to process listing ${listingId}:`, delErr && delErr.message ? delErr.message : delErr);
+        console.error(`❌ Cleanup: Failed to delete listing ${listingId}:`, delErr && delErr.message ? delErr.message : delErr);
       }
     }
 
-    console.log(`🧹 Cleanup: Processed ${processed.length} listing(s).`);
+    console.log(`🧹 Cleanup: Processed and deleted ${processed.length} listing(s).`);
     return { processed: processed.length, listings: processed };
   } catch (err) {
     console.error('❌ Cleanup error:', err && err.message ? err.message : err);
@@ -93,6 +76,7 @@ function startScheduler() {
   console.log(`🧹 Cleanup scheduler started (every 30 minutes): ${SCHEDULE}`);
 }
 
+// Exports for controlled start and testing
 module.exports = {
   start: startScheduler,
   runOnce: runCleanupOnce

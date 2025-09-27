@@ -1,31 +1,31 @@
 // models/Notification.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-/**
- * Notification
- * - user: recipient reference
- * - type: string (info, warning, lending, listing_reserved, etc.)
- * - message: short human-readable message
- * - data: arbitrary metadata object (listingId, lendingId, url, etc.)
- * - read: boolean
- * - createdAt: timestamp
- */
-
 const NotificationSchema = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  type: { type: String, trim: true, default: 'info', index: true },
-  message: { type: String, trim: true, required: true },
+  // keep the existing field name 'user' to remain backward-compatible
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+
+  // simple type so you can filter by 'reminder', 'overdue', 'info', etc.
+  type: { type: String, default: "info" },
+
+  // message shown in UI
+  message: { type: String, required: true },
+
+  // optional structured payload (e.g., { lendingId, url, meta })
   data: { type: Schema.Types.Mixed, default: {} },
-  read: { type: Boolean, default: false, index: true },
-  createdAt: { type: Date, default: Date.now, index: true }
-}, {
-  versionKey: false,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+
+  // whether the user has read the notification
+  read: { type: Boolean, default: false },
+
+  // when notification was created
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Compound index to query recent unread notifications quickly
-NotificationSchema.index({ user: 1, read: 1, createdAt: -1 });
+// Useful indexes:
+// - fast lookup for a user's notifications in descending time
+// - fast count of unread notifications
+NotificationSchema.index({ user: 1, createdAt: -1 });
+NotificationSchema.index({ user: 1, read: 1 });
 
-module.exports = mongoose.model('Notification', NotificationSchema);
+module.exports = mongoose.model("Notification", NotificationSchema);

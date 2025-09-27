@@ -1,12 +1,11 @@
 // jobs/dueDateChecker.js
 // Day 24: Background job to check due dates on lendings and create notifications.
-// Minimal changes only: use notify.user(...) correctly (was calling notify(...) directly).
 // Safe: does not modify your lending model file, only reads documents and creates notifications.
 
 const cron = require("node-cron");
 const Lending = require("../models/Lending");
 const { createNotificationIfNotExists } = require("../services/notificationService");
-const notify = require("../utils/notify"); // notify.user(...) is used below
+const notify = require("../utils/notify"); // <-- new: reusable notify helper
 
 /**
  * checkDueDates
@@ -38,9 +37,9 @@ async function checkDueDates() {
           data: { lendingId: lend._id }
         });
 
-        // realtime emit (if socket server available) — use notify.user correctly
+        // realtime emit (if socket server available)
         try {
-          notify.user(userId, "notification", {
+          notify(userId, {
             type: "overdue",
             message,
             data: { lendingId: lend._id }
@@ -61,9 +60,9 @@ async function checkDueDates() {
           data: { lendingId: lend._id }
         });
 
-        // realtime emit (if socket server available) — use notify.user correctly
+        // realtime emit (if socket server available)
         try {
-          notify.user(userId, "notification", {
+          notify(userId, {
             type: "overdue",
             message,
             data: { lendingId: lend._id }
@@ -100,9 +99,9 @@ async function checkDueDates() {
           data: { lendingId: lend._id }
         });
 
-        // realtime emit — use notify.user correctly
+        // realtime emit
         try {
-          notify.user(userId, "notification", {
+          notify(userId, {
             type: "reminder",
             message,
             data: { lendingId: lend._id }

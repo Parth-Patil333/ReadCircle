@@ -18,12 +18,6 @@ function computeReservedUntil(ms = 48 * 60 * 60 * 1000) {
   return new Date(Date.now() + ms);
 }
 
-function debugLog(...args) {
-  if (process.env.DEBUG_LISTINGS === '1') {
-    try { console.debug('[booklistingController]', ...args); } catch (e) {}
-  }
-}
-
 /**
  * Create a listing
  * POST /api/booklisting
@@ -72,7 +66,9 @@ exports.createListing = async (req, res, next) => {
  * Get listings (public)
  * GET /api/booklisting
  * query: page, limit, q (text search), minPrice, maxPrice, condition
- * optional query: includeReservedMine=1  -> include listings reserved by the requesting user
+ *
+ * NOTE: Modified to include listings reserved BY THE REQUESTING USER so buyers
+ * can see & cancel their own reservations.
  */
 exports.getListings = async (req, res, next) => {
   try {
@@ -81,70 +77,60 @@ exports.getListings = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     const q = req.query.q ? String(req.query.q).trim() : null;
-    const minPrice = (typeof req.query.minPrice !== 'undefined' && req.query.minPrice !== '') ? Number(req.query.minPrice) : undefined;
-    const maxPrice = (typeof req.query.maxPrice !== 'undefined' && req.query.maxPrice !== '') ? Number(req.query.maxPrice) : undefined;
+    const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
+    const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
     const condition = req.query.condition ? String(req.query.condition) : undefined;
 
-    // whether to include listings reserved by the requesting user
-    const includeReservedMine = String(req.query.includeReservedMine || '') === '1';
-    const requestingUserId = req.user && (req.user.id || req.user._id) ? String(req.user.id || req.user._id) : null;
+    // Determine requester id (if any)
+    const requesterId = req.user && req.user.id ? String(req.user.id) : null;
 
+    // Build availability filter:
+    // - Include listings that are not reserved (buyerId missing)
+    // - OR whose reservation has expired (reservedUntil <= now)
+    // - OR listings reserved by the current requester (so buyers see their reservations)
     const now = new Date();
 
-    // Availability conditions:
-    // - buyerId does not exist
-    // - buyerId explicitly null (defensive)
-    // - reservedUntil <= now (expired)
     const availabilityOr = [
       { buyerId: { $exists: false } },
-      { buyerId: null },
       { reservedUntil: { $lte: now } }
     ];
 
-    // Build base filter:
-    // Default: only available listings (availabilityOr)
-    // If includeReservedMine && requestingUserId: allow either available OR buyerId === requestingUserId
-    let filter;
-    if (includeReservedMine && requestingUserId) {
-      filter = {
-        $or: [
-          ...availabilityOr,
-          { buyerId: requestingUserId }
-        ]
-      };
-    } else {
-      // Only available listings
-      filter = { $or: availabilityOr };
+    if (requesterId) {
+      // include listings where buyerId equals the requester
+      // ensure we compare as ObjectId if possible
+      try {
+        availabilityOr.push({ buyerId: mongoose.Types.ObjectId(requesterId) });
+      } catch (e) {
+        // fallback to string compare if conversion fails
+        availabilityOr.push({ buyerId: requesterId });
+      }
     }
 
-    // Apply text search and other filters
+    const filter = { $or: availabilityOr };
+
     if (q) {
-      // text index search (ensure you have a text index on title/author etc)
+      // text search requires text index on relevant fields (title, author, etc.)
       filter.$text = { $search: q };
     }
-    if (typeof minPrice !== 'undefined' && !Number.isNaN(minPrice)) {
+    if (typeof minPrice !== 'undefined') {
       filter.price = Object.assign({}, filter.price || {}, { $gte: minPrice });
     }
-    if (typeof maxPrice !== 'undefined' && !Number.isNaN(maxPrice)) {
+    if (typeof maxPrice !== 'undefined') {
       filter.price = Object.assign({}, filter.price || {}, { $lte: maxPrice });
     }
     if (condition) {
       filter.condition = condition;
     }
 
-    debugLog('getListings filter:', JSON.stringify(filter), 'page:', page, 'limit:', limit, 'includeReservedMine:', includeReservedMine, 'requestingUserId:', requestingUserId);
-
     const [items, total] = await Promise.all([
       BookListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
       BookListing.countDocuments(filter)
     ]);
 
-    const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
-
     res.json({
       success: true,
       data: items,
-      meta: { page, limit, total, totalPages }
+      meta: { page, limit, total, pages: Math.ceil(total / limit) }
     });
   } catch (err) {
     next(err);
@@ -261,13 +247,12 @@ exports.reserveListing = async (req, res, next) => {
 
     // Atomic check+set to avoid race
     const now = new Date();
-    // A listing is considered available if buyerId missing OR buyerId null OR reservedUntil <= now
+    // A listing is considered available if buyerId missing OR reservedUntil <= now
     const listing = await BookListing.findOneAndUpdate(
       {
         _id: id,
         $or: [
           { buyerId: { $exists: false } },
-          { buyerId: null },
           { reservedUntil: { $lte: now } }
         ]
       },
@@ -332,7 +317,7 @@ exports.confirmSale = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No active reservation to confirm' });
     }
 
-    // Confirm sale: clear reservedUntil/reservedAt (sold) but keep buyerId as record
+    // Confirm sale: clear reservedUntil (sold) but keep buyerId as record
     listing.reservedUntil = undefined;
     listing.reservedAt = undefined;
     // Optionally we can set a meta flag soldAt
