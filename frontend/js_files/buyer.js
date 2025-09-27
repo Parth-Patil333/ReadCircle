@@ -174,7 +174,7 @@
     };
     socketEvents.forEach(ev => {
       socket.on(ev, (payload) => {
-        try { console.log('buyer:', ev, payload); } catch (e) {}
+        try { console.log('buyer:', ev, payload); } catch (e) { }
         triggerFetch();
       });
     });
@@ -185,7 +185,7 @@
   // Helper: deep-search raw object for keys that look like an id
   function findIdInRaw(obj) {
     if (!obj || typeof obj !== 'object') return null;
-    const idKeys = ['buyerId','buyer_id','buyer','reservedBy','reserved_by','reserved_by_id','reservedById','reserved','reserver','reserverId','reserver_id','reserved_by_user','reservedUser','reserved_user','reserved_user_id','reserved_id','reservedId','by','user','userId','user_id'];
+    const idKeys = ['buyerId', 'buyer_id', 'buyer', 'reservedBy', 'reserved_by', 'reserved_by_id', 'reservedById', 'reserved', 'reserver', 'reserverId', 'reserver_id', 'reserved_by_user', 'reservedUser', 'reserved_user', 'reserved_user_id', 'reserved_id', 'reservedId', 'by', 'user', 'userId', 'user_id'];
     // check direct keys first
     for (const k of idKeys) {
       if (k in obj) {
@@ -442,8 +442,40 @@
         }
       }
 
-      // Return canonical normalized items
-      const normalized = items.map(normalizeListing).filter(Boolean);
+      // Normalize items
+      let normalized = items.map(normalizeListing).filter(Boolean);
+
+      // FALLBACK: if asking for reserved-only but server returned none,
+      // fetch all listings and filter locally for buyerId === current user id.
+      if (showReservedOnly && (!normalized || normalized.length === 0)) {
+        try {
+          const fallbackUrl = new URL(LISTING_ENDPOINT);
+          fallbackUrl.searchParams.set('page', 1);
+          fallbackUrl.searchParams.set('limit', 200); // reasonable upper bound
+          if (q) fallbackUrl.searchParams.set('q', q);
+          if (cond) fallbackUrl.searchParams.set('condition', cond);
+
+          console.warn('buyer.js: includeReservedMine returned empty — falling back to local filter using all listings', fallbackUrl.toString());
+          const allRes = await authFetchFn(fallbackUrl.toString(), { method: 'GET' });
+          if (allRes && allRes.ok) {
+            const allBody = await allRes.json().catch(() => ({}));
+            let allItems = [];
+            if (Array.isArray(allBody)) allItems = allBody;
+            else if (allBody && Array.isArray(allBody.data)) allItems = allBody.data;
+            else {
+              for (const k in allBody) if (Array.isArray(allBody[k])) { allItems = allBody[k]; break; }
+            }
+            const normAll = allItems.map(normalizeListing).filter(Boolean);
+            const uid = getUserIdFromToken();
+            normalized = normAll.filter(it => it.buyerId && uid && String(it.buyerId) === String(uid));
+            meta = { page: p, totalPages: 1, total: normalized.length };
+            console.debug('buyer.js: fallback reserved count ->', normalized.length);
+          }
+        } catch (err) {
+          console.warn('buyer.js: fallback fetch failed', err);
+        }
+      }
+
       return { items: normalized, meta: meta || { page: p, totalPages: 1, total: normalized.length } };
     } catch (err) {
       console.error('fetchListings network error', err);
