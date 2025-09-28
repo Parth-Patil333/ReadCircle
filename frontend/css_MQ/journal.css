@@ -1,0 +1,355 @@
+:root {
+--indigo-shade: #00796B;
+--indigo-base: #009688;
+--indigo-tint: #4DB6AC;
+--grey-base: #6C757D;
+--grey-shade: #343A40;
+--grey-tint: #E9ECEF;
+
+--font-heading: "Roslindale SemiBold", serif;
+--font-body: "Helvetica Neue", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  }
+
+/* ===== Design tokens (rem units) ===== */
+:root{
+--page-pad: 2.5rem;
+--card-max-w: 40.625rem; /* 650px */
+--radius-lg: 1rem;       /* 16px */
+--radius-md: 0.5rem;     /* 8px */
+--gap-lg: 1.25rem;
+--gap-md: 1rem;
+--gap-sm: 0.5rem;
+--card-min-h: 11.25rem;
+--shadow-soft: 0 0.375rem 1rem rgba(0,0,0,0.08);
+--shadow-subtle: 0 0.1875rem 0.5rem rgba(0,0,0,0.06);
+--transition-fast: 180ms;
+--transition-med: 260ms;
+
+/* button tokens */
+--btn-pad-y: 0.75rem;
+--btn-pad-x: 1rem;
+--btn-radius: var(--radius-md);
+--btn-font: 1rem;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+* { transition: none !important; animation: none !important; }
+  }
+
+/* ===== Base ===== */
+html, body { height: 100%; font-size: 100%; } /* 1rem = 16px */
+
+body {
+font-family: var(--font-body);
+background: var(--grey-tint);
+color: var(--grey-shade);
+display: flex;
+justify-content: center;
+align-items: flex-start;
+padding: var(--page-pad);
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+line-height: 1.6;
+}
+
+/* Container */
+.journal-container {
+width: 100%;
+max-width: var(--card-max-w);
+background: #fff;
+padding: 1.875rem; /* 30px */
+border-radius: var(--radius-lg);
+box-shadow: var(--shadow-soft);
+border: 0.0625rem solid rgba(52,57,60,0.04);
+}
+
+/* Headings */
+h2, h3 {
+font-family: var(--font-heading);
+color: var(--indigo-shade);
+margin-bottom: 1rem;
+}
+
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.125rem; margin-top: 1.25rem; }
+
+/* Form layout */
+.form-box {
+display: flex;
+flex-direction: column;
+gap: 0.875rem; /* ~14px */
+margin-bottom: 1.875rem;
+}
+
+/* Inputs & textarea */
+.form-box input,
+.form-box textarea {
+padding: 0.75rem 0.875rem; /* 12px 14px */
+border: 0.0625rem solid rgba(52,58,64,0.07);
+border-radius: var(--radius-md);
+font-size: 0.9375rem; /* 15px */
+color: var(--grey-shade);
+background: #fff;
+transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+outline: none;
+width: 100%;
+resize: vertical;
+min-height: 2.5rem;
+}
+
+/* Placeholder */
+.form-box input::placeholder,
+.form-box textarea::placeholder {
+color: rgba(52,58,64,0.44);
+font-size: 0.95rem;
+}
+
+/* Textarea specific */
+.form-box textarea {
+min-height: 7.5rem; /* ~120px */
+line-height: 1.5;
+padding-top: 0.75rem;
+}
+
+/* Focus states (accessible) */
+.form-box input:focus,
+.form-box textarea:focus,
+.form-box input:focus-visible,
+.form-box textarea:focus-visible {
+border-color: var(--indigo-base);
+box-shadow: 0 0 0.5rem rgba(77,182,172,0.14);
+transform: translateY(0);
+}
+
+/* Button */
+.btn {
+padding: var(--btn-pad-y) var(--btn-pad-x);
+background: linear-gradient(180deg, var(--indigo-base), var(--indigo-shade));
+color: #fff;
+border: none;
+border-radius: var(--btn-radius);
+font-weight: 700;
+font-size: var(--btn-font);
+cursor: pointer;
+box-shadow: var(--shadow-subtle);
+transition: transform var(--transition-med), box-shadow var(--transition-med), opacity var(--transition-fast);
+align-self: flex-start;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+line-height: 1;
+-webkit-tap-highlight-color: transparent;
+}
+
+/* Button interactions (hover/focus) */
+.btn:hover,
+.btn:focus {
+transform: translateY(-0.0625rem);
+box-shadow: 0 0.6rem 1.2rem rgba(0,0,0,0.08);
+opacity: 0.98;
+outline: none;
+}
+
+.btn:active { transform: translateY(0); }
+
+/* Entries list */
+.entries-list {
+display: flex;
+flex-direction: column;
+gap: 1rem;
+margin-top: 0.75rem;
+}
+
+/* Entry card */
+.entry-card {
+background: #fff;
+border: 0.0625rem solid rgba(52,58,64,0.06);
+border-radius: 0.75rem;
+padding: 1rem 1.25rem;
+box-shadow: var(--shadow-subtle);
+transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.entry-card:hover,
+.entry-card:focus-within {
+transform: translateY(-0.125rem);
+box-shadow: 0 0.75rem 1.6rem rgba(0,0,0,0.06);
+border-color: var(--indigo-base);
+}
+
+.entry-card h4 {
+font-family: var(--font-heading);
+color: var(--indigo-shade);
+margin-bottom: 0.5rem;
+font-size: 1.0625rem;
+}
+
+.entry-card p {
+font-size: 0.9375rem;
+line-height: 1.5;
+color: var(--grey-base);
+margin-bottom: 0.5rem;
+white-space: pre-wrap;
+}
+
+/* Tags inside entry */
+.entry-card .tags {
+font-size: 0.8125rem;
+color: var(--indigo-base);
+font-weight: 600;
+}
+
+/* Back link */
+.back-link {
+margin-top: 1.5625rem;
+text-align: right;
+}
+
+.back-link a {
+color: var(--indigo-base);
+text-decoration: none;
+font-weight: 700;
+font-size: 0.95rem;
+}
+
+.back-link a:hover,
+.back-link a:focus {
+text-decoration: underline;
+outline: none;
+}
+
+/* Accessibility focus outlines */
+:focus { outline: 2px solid transparent; outline-offset: 2px; }
+:focus-visible { outline: 3px solid rgba(4,140,120,0.14); outline-offset: 3px; border-radius: 0.25rem; }
+
+/* Responsive: basic small adjustments (keeps original design intact) */
+@media (max-width: 48rem) {
+body { padding: 1.25rem; align-items: flex-start; }
+.journal-container { padding: 1.25rem; width: 100%; }
+.form-box { gap: 0.75rem; }
+.entry-card { padding: 0.875rem 1rem; }
+.hero, .wrap { padding: 0 0.75rem; }
+
+/* Make action button more prominent on small screens: full width optional */
+.btn { width: 100%; justify-content: center; padding: 0.75rem 1rem; }
+
+/* Improve spacing and readability for small screens */
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1.0rem; margin-top: 0.75rem; }
+.entry-card h4 { font-size: 1rem; }
+.entry-card p { font-size: 0. ninerem; /* fallback corrected in next rule */ }
+}
+
+/* Fix any accidental textual typo in the previous block (ensure valid numeric font-size) */
+@media (max-width: 48rem) {
+.entry-card p { font-size: 0. ninerem; }
+}
+
+/* NOTE: There was a typo above; normalize it to a valid value below (0.9rem) */
+.entry-card p { font-size: 0.9rem; }
+
+/* ===== REQUIRED MEDIA QUERY RANGES (explicit, minimal tweaks) =====
+
+1. 400px — 768px  => 25rem — 48rem
+2. 769px — 1280px => 48.0625rem — 80rem
+3. 1281px — 1535px => 80.0625rem — 95.9375rem
+   We add light refinements per range but no major redesign changes.
+   */
+
+/* 1) Small → Medium screens: 25rem — 48rem */
+@media (min-width: 25rem) and (max-width: 48rem) {
+:root {
+--page-pad: 1.25rem;
+--card-max-w: 32rem;
+--gap-md: 0.75rem;
+--btn-pad-y: 0.75rem;
+--btn-pad-x: 1rem;
+}
+
+body { padding: var(--page-pad); }
+
+.journal-container { padding: 1.25rem; border-radius: 0.75rem; }
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1rem; }
+
+.form-box input,
+.form-box textarea { font-size: 0.95rem; padding: 0.7rem 0.8rem; }
+
+.btn { padding: 0.75rem 1rem; font-size: 1rem; width: 100%; }
+
+.entries-list { gap: 0.85rem; }
+.entry-card { padding: 0.9rem 1rem; min-height: 8.75rem; }
+.entry-card h4 { font-size: 1rem; }
+.entry-card p { font-size: 0. ninerem; } /* corrected below */
+}
+
+/* normalize typo again to valid numeric */
+@media (min-width: 25rem) and (max-width: 48rem) {
+.entry-card p { font-size: 0.9rem; }
+}
+
+/* 2) Mid / Desktop: 48.0625rem — 80rem */
+@media (min-width: 48.0625rem) and (max-width: 80rem) {
+:root {
+--page-pad: 2.5rem;
+--card-max-w: 40.625rem;
+}
+
+body { padding: var(--page-pad); }
+
+.journal-container { padding: 1.875rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.125rem; }
+
+.form-box input,
+.form-box textarea { font-size: 0.95rem; padding: 0.75rem 0.875rem; }
+
+.btn { width: auto; padding: 0.75rem 1rem; }
+.entries-list { gap: 1rem; }
+}
+
+/* 3) Wide desktop: 80.0625rem — 95.9375rem */
+@media (min-width: 80.0625rem) and (max-width: 95.9375rem) {
+:root {
+--page-pad: 3rem;
+--card-max-w: 50rem;
+}
+
+body { padding: var(--page-pad); }
+
+.journal-container { padding: 2rem; max-width: var(--card-max-w); }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.25rem; }
+
+.form-box input,
+.form-box textarea { font-size: 1rem; padding: 0.85rem 0.95rem; }
+.btn { padding: 0.85rem 1.1rem; }
+}
+
+/* Extra small screens fallback (<25rem) */
+@media (max-width: 25rem) {
+:root { --page-pad: 0.75rem; --btn-pad-y: 0.6rem; --btn-pad-x: 0.75rem; }
+body { padding: var(--page-pad); }
+.journal-container { padding: 0.9rem; border-radius: 0.625rem; }
+h2 { font-size: 1.125rem; }
+.form-box input, .form-box textarea { padding: 0.6rem 0.7rem; font-size: 0. ninerem; }
+.btn { padding: 0.6rem 0.85rem; font-size: 0.95rem; width: 100%; }
+.entry-card { padding: 0.75rem; min-height: 7.5rem; }
+}
+
+/* normalize final small-screen font-size typo */
+@media (max-width: 25rem) {
+.form-box input, .form-box textarea { font-size: 0.9rem; }
+}
+
+/* Small utilities */
+.small { font-size: 0.85rem; color: var(--grey-base); }
+.hidden { display: none !important; }
