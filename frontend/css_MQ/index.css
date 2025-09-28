@@ -1,313 +1,429 @@
-:root {
-  --indigo-shade: #00796B;
-  --indigo-base: #009688;
-  --indigo-tint: #4DB6AC;
+:root{
+/* Primary teal palette (user's color stack mapped) */
+--primary-base: #008080; /* teal base */
+--primary-shade: #004C4C; /* darker */
+--primary-tint: #66B2B2; /* lighter */
 
-  --grey-base: #6C757D;
-  --grey-shade: #343A40;
-  --grey-tint: #CED4DA;
+/* keep original variable-name flavor but mapped to teal */
+--indigo-50:  var(--primary-tint);
+--indigo-200: #8fc9c9;
+--indigo-600: var(--primary-base);
+--indigo-900: var(--primary-shade);
 
-  --font-heading: "Roslindale SemiBold", serif;
-  --font-logo-quote: "Roslindale", serif;
-  --font-body: "Helvetica Neue", sans-serif;
+/* Greys */
+--gray-base:  #6C757D;
+--gray-shade: #343A40;
+--gray-tint:  #CED4DA;
 
-  --radius-pill: 3.125rem; /* 50px */
-  --transition-fast: 180ms cubic-bezier(.2,.9,.3,1);
-  --container-max: 70rem;
+/* Typography & sizing */
+--font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+--root-font-size: 100%; /* 1rem = 16px */
+--radius-sm: 0.25rem;
+--radius-md: 0.5rem;
+--radius-lg: 1rem;
+--container-max: 70rem;
+
+/* Buttons */
+--btn-padding-y: 0.625rem; /* 10px */
+--btn-padding-x: 1.25rem;  /* 20px */
+--btn-font-size: 0.95rem;
+--btn-transition: 300ms cubic-bezier(.2,.9,.3,1);
 }
 
+/* Universal reset (exact reset pattern required) */
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  text-decoration: none;
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 }
 
-html { font-size: 100%; } /* 1rem = 16px */
+/* ===========================
+User CSS (modernized to rem, responsive MQs, hover effects)
+Minimal changes to original design intent.
+=========================== */
+
+/* Preserve user variables (merge with global root above) */
+:root {
+--indigo-shade: #00796B;
+--indigo-base: #009688;
+--indigo-tint: #4DB6AC;
+--grey-base: #6C757D;
+--grey-shade: #343A40;
+--grey-tint: #CED4DA;
+
+--font-heading: "Roslindale SemiBold", serif;
+--font-logo-quote: "Roslindale", serif;
+--font-body: "Helvetica Neue", sans-serif;
+}
+
+/* base elements */
+html { font-size: var(--root-font-size); }
 body {
-  background-color: var(--indigo-tint);
-  font-family: var(--font-body);
-  min-height: 100vh;
-  color: var(--grey-base);
-  line-height: 1.45;
+background-color: var(--indigo-tint);
+font-family: var(--font-body);
+min-height: 100vh;
+color: var(--grey-base);
+line-height: 1.45;
 }
 
+/* small container adjustments kept minimal */
 .container {
-  margin-top: 0.3125rem; /* 5px */
-  margin-left: auto;
-  margin-right: auto;
-  max-width: var(--container-max);
-  padding-left: 1rem;
-  padding-right: 1rem;
+margin-top: 0.3125rem; /* 5px -> 0.3125rem */
 }
 
 /* HEADER */
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.625rem 0;
-  margin-left: 0.625rem;
-  margin-right: 0.625rem;
-  gap: 1rem;
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 0.625rem 0; /* 10px -> 0.625rem */
+margin-left: 0.625rem; /* 10px */
+margin-right: 0.625rem; /* 10px */
 }
 
+/* Logo */
 .logo {
-  font-family: var(--font-heading);
-  font-size: 1.5rem;
-  color: white;
+font-family: var(--font-heading);
+font-size: 1.5rem;
+color: white;
 }
 
+/* Nav */
 .nav {
-  display: flex;
-  gap: 0.9375rem;
-  align-items: center;
+display: flex;
+gap: 0.9375rem; /* 15px -> 0.9375rem */
+align-items: center;
 }
 
-/* BUTTONS */
+/* Buttons (base) */
 .btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+padding: var(--btn-padding-y) var(--btn-padding-x);
+border-radius: 3.125rem; /* 50px -> 3.125rem */
+font-size: var(--btn-font-size);
+font-weight: 500;
+cursor: pointer;
+border: none;
+transition: transform var(--btn-transition), box-shadow var(--btn-transition), background-color var(--btn-transition), color var(--btn-transition), opacity var(--btn-transition);
+display: inline-flex;
+align-items: center;
+justify-content: center;
+line-height: 1;
 }
 
-/* Signup / Join */
+/* Primary — white background, indigo/teal text */
 .btn_signup,
 .btn_join {
-  background-color: white;
-  color: var(--indigo-base);
-  box-shadow: 0 0.25rem 0.6rem rgba(0,0,0,0.06);
-  border: 0.0625rem solid rgba(0,0,0,0.04);
+background-color: white;
+color: var(--indigo-base);
+box-shadow: 0 0.25rem 0.625rem rgba(0,0,0,0.06); /* 4px 10px -> scaled */
 }
 
+/* hover / focus for white buttons */
 .btn_signup:hover,
 .btn_signup:focus,
 .btn_join:hover,
 .btn_join:focus {
-  background-color: var(--indigo-base);
-  color: white;
-  transform: translateY(-0.06rem) scale(1.03);
-  box-shadow: 0 0.6rem 1.2rem rgba(0,0,0,0.12);
-  outline: none;
-  opacity: 1;
+background-color: var(--indigo-base);
+color: white;
+transform: scale(1.05);
+box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.12);
+outline: none;
 }
 
-/* Login */
+/* Transparent login button */
 .btn_login {
-  background: none;
-  color: white;
-  padding: 0.5625rem 1rem;
-  border-radius: 0.5rem;
+background: transparent;
+color: white;
+padding: 0.5rem 0.75rem;
+border-radius: 0.5rem;
 }
 
+/* hover / focus for login */
 .btn_login:hover,
 .btn_login:focus {
-  background-color: rgba(255, 255, 255, 0.12);
-  transform: translateY(-0.06rem) scale(1.02);
-  outline: none;
+background-color: rgba(255,255,255,0.18);
+transform: scale(1.03);
+outline: none;
 }
 
+/* accessible focus ring */
 .btn:focus-visible {
-  box-shadow: 0 0 0 0.25rem rgba(0,151,136,0.12);
-  outline: none;
-}
-
-.btn:active {
-  transform: translateY(0) scale(0.98);
+box-shadow: 0 0 0 0.25rem rgba(0,128,128,0.14);
+outline: none;
 }
 
 /* MAIN */
 .main {
-  text-align: center;
-  margin-top: 5rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
+text-align: center;
+margin-top: 5rem; /* 80px -> 5rem */
+padding: 0 1rem;
 }
 
+/* Headings */
 .main-headings h1 {
-  font-family: var(--font-heading);
-  font-size: 2.8rem;
-  color: white;
-  margin-bottom: 1.25rem;
+font-family: var(--font-heading);
+font-size: 2.8rem;
+color: white;
+margin-bottom: 1.25rem; /* 20px -> 1.25rem */
 }
 
+/* Subheading */
 .sub_heading p {
-  font-family: var(--font-logo-quote);
-  font-size: 1.1rem;
-  color: white;
-  margin-bottom: 1.25rem;
+font-family: var(--font-logo-quote);
+font-size: 1.1rem;
+color: white;
+margin-bottom: 1.25rem;
 }
 
-/* IMAGE SECTION */
-.image-container { text-align: center; }
+/* Image */
+.image-container {
+text-align: center;
+}
 
 .image-wrapper {
-  position: relative;
-  display: inline-block;
-  margin-bottom: 0.9375rem;
+position: relative;
+display: inline-block;
+margin-bottom: 0.9375rem; /* 15px -> 0.9375rem */
 }
 
+/* decorative circular background behind image */
 .image-wrapper::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 12.5rem;
-  height: 12.5rem;
-  background-color: white;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 0;
+content: "";
+position: absolute;
+top: 50%;
+left: 50%;
+width: 12.5rem;   /* 200px -> 12.5rem */
+height: 12.5rem;  /* 200px */
+background-color: white;
+border-radius: 50%;
+transform: translate(-50%, -50%);
+z-index: 0;
 }
 
+/* user image */
 .image-wrapper img {
-  position: relative;
-  z-index: 1;
-  max-width: 15.625rem;
-  height: auto;
-  display: block;
-  border-radius: 0.5rem;
+position: relative;
+z-index: 1;
+max-width: 15.625rem; /* 250px -> 15.625rem */
+height: auto;
+display: block;
+border-radius: 0.5rem;
 }
 
-/* BOOK SLIDER */
+/* JOIN NOW button - repeated styling kept consistent */
+.btn_join {
+background-color: white;
+color: var(--indigo-base);
+padding: var(--btn-padding-y) var(--btn-padding-x);
+border: none;
+font-weight: 500;
+cursor: pointer;
+border-radius: 3.125rem;
+transition: transform var(--btn-transition), opacity var(--btn-transition);
+}
+.btn_join:hover,
+.btn_join:focus {
+opacity: 0.95;
+transform: scale(1.03);
+outline: none;
+}
+
+/* Section 2 - Full width book slider */
 .book-slider-section {
-  width: 100%;
-  overflow: hidden;
-  padding: 1.25rem 0;
-  margin-top: 3.125rem;
+width: 100%;
+overflow: hidden;
+padding: 1.25rem 0; /* 20px -> 1.25rem */
+margin-top: 3.125rem; /* 50px -> 3.125rem */
 }
 
 .book-slider {
-  display: flex;
-  gap: 1.25rem;
-  animation: scrollBooks 25s linear infinite;
-  align-items: center;
-  will-change: transform;
+display: flex;
+gap: 1.25rem; /* 20px -> 1.25rem */
+animation: scrollBooks 25s linear infinite;
+align-items: center;
 }
 
+/* book card */
 .book-card {
-  flex: 0 0 auto;
-  width: 9.375rem;
-  height: 13.75rem;
-  border-radius: 0.9375rem;
-  overflow: hidden;
-  box-shadow: 0 0.25rem 0.625rem rgba(0,0,0,0.4);
-  background: white;
+flex: 0 0 auto;
+width: 9.375rem; /* 150px -> 9.375rem */
+height: 13.75rem; /* 220px -> 13.75rem */
+border-radius: 0.9375rem; /* 15px -> 0.9375rem */
+overflow: hidden;
+box-shadow: 0 0.25rem 0.625rem rgba(0,0,0,0.4); /* 4px 10px */
+background: white;
 }
 
 .book-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+width: 100%;
+height: 100%;
+object-fit: cover;
+display: block;
 }
 
+/* Infinite scrolling animation (kept as-is but transform uses rem implicitly) */
 @keyframes scrollBooks {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+0% { transform: translateX(0); }
+100% { transform: translateX(-50%); }
 }
 
-.book-slider:hover { animation-play-state: paused; }
-
-/* BLACK SECTION */
+/* Section 3 - Black background container */
 .black-section {
-  background-color: #000;
-  padding: 2.5rem 1.25rem;
+background-color: black;
+padding: 2.5rem 1.25rem; /* 40px 20px -> 2.5rem 1.25rem */
 }
 
 .black-container {
-  text-align: center;
-  color: white;
-  font-size: 1.2rem;
-  line-height: 2rem;
-  max-width: 50rem;
-  margin: 0 auto;
+text-align: center;
+color: white;
+font-size: 1.2rem;
+line-height: 2rem;
+max-width: 50rem; /* 800px -> 50rem */
+margin: 0 auto;
 }
 
-.h5-1 { font-family: var(--font-heading); color: var(--indigo-tint); }
-.h4 { font-family: var(--font-heading); }
-.h5-2 { font-family: var(--font-body); }
+/* small heading classes preserved, minor fixes */
+.h5-1 {
+font-family: var(--font-heading);
+color: var(--indigo-tint);
+}
+.h4 {
+font-family: var(--font-heading);
+}
+.h5-2 {
+font-family: var(--font-body);
+}
 
 /* FOOTER */
 .footer {
-  text-align: center;
-  margin-top: 3.125rem;
-  color: white;
-  font-size: 0.9rem;
-  padding: 1rem 0;
+text-align: center;
+margin-top: 3.125rem; /* 50px -> 3.125rem */
+color: white;
+font-size: 0.9rem;
+padding: 1rem 0;
 }
 
 .footer-links a {
-  color: white;
-  margin: 0 0.3125rem;
-  transition: color var(--transition-fast), text-decoration var(--transition-fast);
+color: white;
+margin: 0 0.3125rem; /* 5px -> 0.3125rem */
 }
+
 .footer-links a:hover,
 .footer-links a:focus {
-  text-decoration: underline;
-  color: var(--indigo-shade);
-  outline: none;
+text-decoration: underline;
+color: var(--indigo-shade);
+outline: none;
 }
 
-/* ========== MEDIA QUERIES ========== */
-/* 1) 400–768px => 25rem–48rem */
+/* ===========================
+Media Queries (converted to rem)
+Ranges:
+1) 400px — 768px  => 25rem — 48rem
+2) 769px — 1280px => 48.0625rem — 80rem
+3) 1281px — 1535px => 80.0625rem — 95.9375rem
+Minimal layout tweaks only — design preserved.
+=========================== */
+
+/* 1) Small → Medium screens: 25rem — 48rem */
 @media (min-width: 25rem) and (max-width: 48rem) {
-  .logo { font-size: 1.375rem; }
-  .nav { gap: 0.75rem; }
-
-  .main { margin-top: 3.5rem; }
-  .main-headings h1 { font-size: 2.25rem; }
-  .sub_heading p { font-size: 1rem; }
-
-  .image-wrapper::before { width: 10rem; height: 10rem; }
-  .image-wrapper img { max-width: 12rem; }
-
-  .book-card { width: 8.5rem; height: 12.5rem; }
-
-  .black-container { font-size: 1.05rem; }
-  .footer { font-size: 0.875rem; }
-
-  .btn { padding: 0.75rem 1rem; }
+.header {
+padding: 0.5rem 0; /* slightly reduced */
+margin-left: 0.5rem;
+margin-right: 0.5rem;
 }
 
-/* 2) 769–1280px => 48.0625rem–80rem */
+.logo { font-size: 1.25rem; }
+
+.nav { gap: 0.75rem; }
+
+.btn { padding: 0.5rem 0.875rem; font-size: 0.9rem; border-radius: 2.5rem; }
+
+.main { margin-top: 3.5rem; padding: 0 0.75rem; }
+
+.main-headings h1 { font-size: 2.1rem; margin-bottom: 1rem; }
+
+.image-wrapper::before {
+width: 10rem; /* slightly smaller circle */
+height: 10rem;
+}
+
+.image-wrapper img { max-width: 12rem; } /* reduce image size */
+
+.book-card { width: 8.5rem; height: 12.25rem; } /* slightly smaller cards */
+.book-slider { gap: 1rem; animation-duration: 22s; }
+
+.black-container { font-size: 1.0625rem; line-height: 1.8rem; padding: 0 1rem; max-width: 38rem; }
+}
+
+/* 2) Mid / Desktop: 48.0625rem — 80rem */
 @media (min-width: 48.0625rem) and (max-width: 80rem) {
-  .logo { font-size: 1.75rem; }
+.header { padding: 0.75rem 0; margin-left: 0.75rem; margin-right: 0.75rem; }
 
-  .main { margin-top: 5.5rem; }
-  .main-headings h1 { font-size: 3rem; }
-  .sub_heading p { font-size: 1.125rem; }
+.logo { font-size: 1.5rem; }
 
-  .image-wrapper::before { width: 13rem; height: 13rem; }
-  .image-wrapper img { max-width: 16rem; }
+.nav { gap: 1rem; }
 
-  .book-card { width: 9.5rem; height: 14.5rem; }
+.btn { padding: 0.625rem 1.25rem; font-size: 0.98rem; }
 
-  .black-container { max-width: 60rem; font-size: 1.25rem; }
+.main { margin-top: 4.25rem; }
+
+.main-headings h1 { font-size: 2.4rem; }
+
+.image-wrapper::before { width: 12.5rem; height: 12.5rem; }
+.image-wrapper img { max-width: 14.5rem; }
+
+.book-card { width: 9.375rem; height: 13.75rem; }
+.book-slider { gap: 1.25rem; animation-duration: 24s; }
+
+.black-container { max-width: 48rem; }
 }
 
-/* 3) 1281–1535px => 80.0625rem–95.9375rem */
+/* 3) Wide desktop: 80.0625rem — 95.9375rem */
 @media (min-width: 80.0625rem) and (max-width: 95.9375rem) {
-  .logo { font-size: 2rem; }
+.header { padding: 1rem 0; margin-left: 1rem; margin-right: 1rem; }
 
-  .main { margin-top: 6rem; }
-  .main-headings h1 { font-size: 3.25rem; }
-  .sub_heading p { font-size: 1.25rem; }
+.logo { font-size: 1.75rem; }
 
-  .image-wrapper::before { width: 14.5rem; height: 14.5rem; }
-  .image-wrapper img { max-width: 18rem; }
+.nav { gap: 1.25rem; }
 
-  .book-card { width: 10.5rem; height: 15.5rem; }
+.btn { padding: 0.75rem 1.5rem; font-size: 1.05rem; border-radius: 3.5rem; }
 
-  .black-container { max-width: 70rem; font-size: 1.35rem; }
+.main { margin-top: 5.5rem; }
+
+.main-headings h1 { font-size: 3rem; }
+
+.image-wrapper::before { width: 13.5rem; height: 13.5rem; }
+.image-wrapper img { max-width: 16rem; }
+
+.book-card { width: 10rem; height: 14.5rem; }
+.book-slider { gap: 1.5rem; animation-duration: 26s; }
+
+.black-container { max-width: 58rem; font-size: 1.25rem; line-height: 2.1rem; }
 }
+
+/* ===========================
+Minor helpers (kept small)
+=========================== */
+
+/* make buttons slightly elevated on active for physical feedback */
+.btn:active {
+transform: translateY(0.06rem) scale(0.995);
+box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.08);
+}
+
+/* utility to visually hide on small screens if needed */
+.hide-sm { display: none; }
+@media (min-width: 48.0625rem) {
+.hide-sm { display: block; }
+}
+
+/* keep original animation reduced-motion safe */
+@media (prefers-reduced-motion: reduce) {
+.book-slider { animation: none; }
+}
+
+/* End of file */
