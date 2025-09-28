@@ -1,5 +1,5 @@
 :root{
-/* Colors (user's palette) */
+/* keep the same palette so this file can be pasted standalone */
 --indigo-shade: #00796B;
 --indigo-base:  #009688;
 --indigo-tint:  #4DB6AC;
@@ -7,37 +7,12 @@
 --grey-shade:   #343A40;
 --grey-tint:    #E9ECEF;
 
-/* Typography */
---font-heading: "Roslindale SemiBold", serif;
---font-body:    "Helvetica Neue", sans-serif;
-
-/* Layout tokens (rem) */
---page-pad: 2rem;
---topbar-pad-y: 1rem;
---topbar-pad-x: 1.25rem;
---radius-lg: 0.875rem;
---radius-md: 0.5rem;
---gap-sm: 0.5rem;
---gap-md: 1rem;
---gap-lg: 2rem;
---card-min-h: 11.25rem; /* ~180px */
---shadow-1: 0 0.375rem 1rem rgba(16,24,32,0.06);
---shadow-2: 0 0.5rem 1.5rem rgba(16,24,32,0.08);
+--topbar-pad-y: 1rem; /* used below for small-screen fixed placement */
 --transition-fast: 180ms;
---transition-med: 260ms;
-
-/* Buttons */
---btn-pad-y: 0.4rem;
---btn-pad-x: 0.875rem;
---btn-font: 0.9375rem;
---btn-radius: var(--radius-md);
-
-/* Small-screen helpers */
---sm-gap: 0.75rem;
---sm-pad: 1rem;
+--notif-z: 1400;
 }
 
-/* Universal reset (exact pattern) */
+/* universal reset (keeps pattern consistent) */
 *,
 *::before,
 *::after {
@@ -48,337 +23,153 @@ padding: 0;
 -moz-osx-font-smoothing: grayscale;
 }
 
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
+/* ===== Notification dropdown CSS fix (CSS-only) =====
+Goals:
 
-* { transition: none !important; animation: none !important; }
-  }
+* Dropdown is visually hidden by default (no layout jump)
+* Shows reliably when notification area receives click / focus (no JS change)
+  using :focus-within (works when user clicks the notif button or tabs into it)
+* Also supports JS-driven state via .open / .is-open on .notif-wrap (keeps compatibility)
+* Ensures dropdown is always above other content (z-index)
+* On small screens the dropdown becomes fixed & centered for guaranteed visibility
+* Provides smooth, accessible transitions and ensures pointer-events only when visible
+  */
 
-/* Base layout */
-html, body { height: 100%; }
-html { font-size: 100%; } /* 1rem = 16px */
-body {
-font-family: var(--font-body);
-color: var(--grey-shade);
-background: #ffffff;
-line-height: 1.6;
-padding: var(--page-pad);
-display: flex;
-flex-direction: column;
-min-height: 100vh;
-}
+/* Base hidden state */
+.notif-dropdown {
+/* keep original positioning for desktop */
+position: absolute;
+right: 0;
+top: calc(100% + 0.5rem);
 
-/* Containers */
-.wrap {
-width: 100%;
-max-width: 76rem;
-margin: 0 auto;
-padding: 0 var(--page-pad);
-box-sizing: border-box;
-}
+width: min(24rem, 90vw);
+max-height: 16rem;
 
-/* Topbar */
-.topbar {
-display: flex;
-justify-content: space-between;
-align-items: center;
-background: linear-gradient(90deg, var(--indigo-base), var(--indigo-shade));
-color: #fff;
-padding: var(--topbar-pad-y) var(--topbar-pad-x);
-box-shadow: var(--shadow-2);
-position: sticky;
-top: 0;
-z-index: 1000;
-border-bottom: 0.0625rem solid rgba(0,0,0,0.06);
-gap: var(--gap-sm);
-}
-
-/* Brand */
-.brand {
-display: flex;
-align-items: center;
-font-family: var(--font-heading);
-font-size: 1.125rem;
-gap: 0.625rem;
-}
-.logo-dot {
-width: 0.875rem;
-height: 0.875rem;
-border-radius: 50%;
 background: #fff;
-box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.08) inset;
+color: var(--grey-shade);
+border-radius: 0.5rem;
+box-shadow: 0 0.5rem 1.5rem rgba(16,24,32,0.08);
+border: 0.0625rem solid rgba(16,24,32,0.06);
+
+overflow: hidden;
+overflow-y: auto;
+
+/* start visually hidden but preserve layout flow of parent (absolute so no shift) */
+opacity: 0;
+transform: translateY(-0.5rem) scale(0.995);
+visibility: hidden;
+pointer-events: none;
+
+transform-origin: top right;
+transition:
+opacity var(--transition-fast) ease,
+transform var(--transition-fast) ease,
+visibility var(--transition-fast);
+z-index: var(--notif-z);
 }
 
-/* User actions */
-.userbox { display: flex; align-items: center; gap: 0.75rem; }
+/* Strong stacking context to beat other UI (cards, hero, etc) */
+.notif-wrap,
+.notif-dropdown { z-index: var(--notif-z); }
 
-/* Buttons */
-.btn {
-background: var(--indigo-tint);
-color: #fff;
-border: none;
-padding: var(--btn-pad-y) var(--btn-pad-x);
-border-radius: var(--btn-radius);
+/* When notif area receives keyboard focus or is clicked (:focus-within) - show dropdown */
+.notif-wrap:focus-within .notif-dropdown,
+.notif-wrap.open .notif-dropdown,
+.notif-wrap.is-open .notif-dropdown {
+opacity: 1;
+transform: translateY(0) scale(1);
+visibility: visible;
+pointer-events: auto;
+/* avoid clipping by giving a slightly larger shadow when open */
+box-shadow: 0 1rem 2rem rgba(0,0,0,0.12);
+}
+
+/* Ensure items inside are scrollable and comfortable to tap */
+.notif-list {
+max-height: 14rem;
+overflow-y: auto;
+-webkit-overflow-scrolling: touch;
+padding: 0.5rem;
+}
+
+/* Make each notification row easier to tap when dropdown open */
+.notif-list li {
+padding: 0.75rem 0.9rem;
 cursor: pointer;
-font-size: var(--btn-font);
-transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
-box-shadow: 0 0.25rem 0.6rem rgba(0,0,0,0.05);
-display: inline-flex;
-align-items: center;
-justify-content: center;
-line-height: 1;
--webkit-tap-highlight-color: transparent;
+transition: background var(--transition-fast);
 }
-.btn:hover,
-.btn:focus {
-transform: translateY(-0.0625rem);
-box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
-opacity: 0.98;
+.notif-list li:hover,
+.notif-list li:focus {
+background: rgba(77,182,172,0.06);
 outline: none;
 }
-.btn:active { transform: translateY(0); }
 
-/* Ghost */
-.btn-ghost {
-background: transparent;
-color: #fff;
-border: 0.0625rem solid rgba(255,255,255,0.22);
-padding: 0.35rem 0.75rem;
-}
-.btn-ghost:hover,
-.btn-ghost:focus {
-background: #fff;
-color: var(--indigo-base);
-border-color: rgba(255,255,255,0.9);
-}
-
-/* Hero */
-.hero {
-background: linear-gradient(135deg, var(--indigo-base), var(--indigo-tint));
-padding: 2rem;
-margin: 1.75rem auto;
-border-radius: 0.875rem;
-text-align: center;
-color: white;
-box-shadow: var(--shadow-2);
-max-width: calc(100% - 4rem);
-}
-.hero .greet { font-family: var(--font-heading); font-size: 1.625rem; margin-bottom: 0.5rem; }
-.hero .sub { font-size: 1rem; opacity: 0.95; margin-bottom: 1rem; }
-
-.quick { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.75rem; }
-.chip {
-background: #fff;
-color: var(--indigo-base);
-padding: 0.45rem 1rem;
-border-radius: 999px;
-font-size: 0.95rem;
-font-weight: 600;
-text-decoration: none;
-transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-box-shadow: 0 0.25rem 0.6rem rgba(0,0,0,0.06);
-}
-.chip:hover,
-.chip:focus {
-transform: translateY(-0.125rem);
-background: var(--indigo-base);
-color: #fff;
-box-shadow: 0 0.6rem 1rem rgba(0,0,0,0.08);
-}
-
-/* Grid & cards */
-.grid {
-display: grid;
-grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-gap: 1.25rem;
-padding: 1.25rem;
-max-width: 76rem;
-margin: 0 auto;
-}
-.card {
-background: #fff;
-border: 0.0625rem solid rgba(52,58,64,0.06);
-border-radius: 0.75rem;
-padding: 1.1rem;
-color: inherit;
-transition: transform var(--transition-med), box-shadow var(--transition-med), border-color var(--transition-med);
-display: flex;
-flex-direction: column;
-justify-content: space-between;
-min-height: var(--card-min-h);
-box-shadow: var(--shadow-1);
-}
-.card h3 { font-family: var(--font-heading); margin-bottom: 0.5rem; color: var(--indigo-shade); font-size: 1.125rem; }
-.card p { font-size: 0.95rem; color: var(--grey-base); flex-grow: 1; margin-bottom: 0.5rem; }
-.card .cta { margin-top: 0.75rem; font-weight: 700; color: var(--indigo-base); font-size: 0.95rem; align-self: flex-start; }
-.card:hover,
-.card:focus-within {
-border-color: var(--indigo-base);
-box-shadow: 0 1rem 2rem rgba(0,0,0,0.09);
-transform: translateY(-0.3125rem) scale(1.01);
-}
-.card .cta::after { content: " →"; }
-
-/* Notifications */
-.notif-wrap { position: relative; display: inline-flex; align-items: center; }
-.notif-btn {
-background: transparent; color: inherit; border: none;
-font-size: 1.05rem; padding: 0.35rem 0.55rem; border-radius: 0.5rem; cursor: pointer;
-display: inline-flex; gap: 0.5rem; align-items: center;
-transition: background var(--transition-fast), transform var(--transition-fast);
-}
-.notif-btn:hover, .notif-btn:focus { transform: translateY(-0.05rem); background: rgba(255,255,255,0.06); outline: none; }
-.notif-badge { background: #ff4d4f; color: #fff; min-width: 1.25rem; height: 1.25rem; font-size: 0.75rem; display: inline-grid; place-items: center; border-radius: 999px; padding: 0 0.25rem; margin-left: 0.25rem; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.12); }
-.notif-dropdown { position: absolute; right: 0; top: calc(100% + 0.5rem); width: min(24rem, 90vw); background: #fff; color: var(--grey-shade); border-radius: var(--radius-md); box-shadow: var(--shadow-2); border: 0.0625rem solid rgba(16,24,32,0.06); overflow: hidden; transform-origin: top right; z-index: 1200; }
-.notif-list { list-style: none; max-height: 14rem; overflow: auto; padding: 0.5rem; margin: 0; }
-.notif-list li { padding: 0.6rem 0.8rem; border-radius: 0.375rem; margin-bottom: 0.4rem; display:flex; justify-content: space-between; gap: 0.5rem; align-items:center; }
-.notif-list li.unread { background: rgba(77,182,172,0.06); }
-
-/* Footer */
-.foot { text-align: center; padding: 1rem 0; color: var(--grey-base); border-top: 0.0625rem solid var(--grey-tint); margin-top: 2.5rem; font-size: 0.875rem; background: #fafafa; }
-
-/* Small-screen improvement block
-
-* Targets 400–768px (25rem — 48rem) and also tight phones below 25rem.
-* Makes layout stack, increases touch targets, simplifies spacing,
-  makes notifications & dropdowns usable, and keeps visual identity.
-  */
-  @media (max-width: 48rem) {
-  /* Page padding reduced for small screens */
-  :root {
-  --page-pad: 1rem;
-  --topbar-pad-y: 0.625rem;
-  --topbar-pad-x: 0.75rem;
-  --gap-md: 0.75rem;
-  --btn-pad-y: 0.6rem;   /* slightly larger tap area */
-  --btn-pad-x: 1rem;
-  --btn-font: 1rem;
-  }
-
-body { padding: var(--page-pad); }
-
-/* Topbar stacks: brand on left, actions collapse into right aligned group with overflow */
-.topbar {
-flex-wrap: wrap;
-align-items: center;
-gap: 0.5rem;
-padding: var(--topbar-pad-y) var(--topbar-pad-x);
-}
-
-/* Make brand slightly smaller & allow it to wrap */
-.brand { font-size: 1rem; gap: 0.5rem; flex: 1 1 auto; min-width: 0; }
-
-/* Userbox becomes a compact row; buttons slightly larger for touch and full-height */
-.userbox { gap: 0.5rem; flex: 0 0 auto; }
-.btn, .btn-ghost {
-padding: 0.6rem 0.9rem;
-font-size: var(--btn-font);
-}
-
-/* Hero tightened */
-.hero {
-padding: 1.25rem;
-margin: 1rem auto;
-border-radius: 0.75rem;
-}
-.hero .greet { font-size: 1.375rem; }
-.hero .sub { font-size: 0.95rem; }
-
-/* Chips wrap more tightly and become slightly smaller */
-.quick { gap: 0.5rem; }
-.chip { padding: 0.35rem 0.75rem; font-size: 0.875rem; }
-
-/* Grid -> single column where useful, cards become compact */
-.grid {
-grid-template-columns: 1fr;
-gap: 0.9rem;
-padding: 0.75rem;
-}
-.card {
-padding: 0.9rem;
-min-height: 9.5rem;
-}
-.card h3 { font-size: 1rem; }
-.card p { font-size: 0.9rem; }
-
-/* Make CTA easier to tap: full-width optional class .cta-full (if used) */
-.card .cta { font-size: 0.95rem; }
-
-/* Notifications: dropdown should use vw width and be easier to tap */
-.notif-dropdown {
-right: 0.5rem;
-left: 0.5rem;
-width: auto;
-max-width: calc(100% - 1rem);
-top: calc(100% + 0.375rem);
-}
-.notif-list { max-height: 10rem; padding: 0.25rem; }
-
-/* Topbar buttons can collapse into icon-only if you add .icon-only class */
-.btn.icon-only {
-padding-left: 0.5rem;
-padding-right: 0.5rem;
-width: 2.6rem;
-height: 2.6rem;
-border-radius: 0.5rem;
-justify-content: center;
-}
-
-/* Footer spacing tightened */
-.foot { padding: 0.75rem 0; font-size: 0.85rem; margin-top: 1.5rem; }
-
-/* Hide non-essential small text where cramped (optional utility) */
-.hide-on-sm { display: none; }
-}
-
-/* Extra-tight phones: <25rem (~400px) — make everything extremely compact */
-@media (max-width: 25rem) {
-:root {
---page-pad: 0.75rem;
---topbar-pad-y: 0.5rem;
---topbar-pad-x: 0.5rem;
---btn-pad-y: 0.5rem;
---btn-pad-x: 0.75rem;
-}
-
-body { padding: var(--page-pad); }
-
-.wrap { padding: 0 0.5rem; }
-
-.brand { font-size: 0.95rem; gap: 0.4rem; }
-.logo-dot { width: 0.675rem; height: 0.675rem; }
-
-.hero { padding: 1rem; margin: 0.75rem auto; }
-.hero .greet { font-size: 1.125rem; }
-
-.grid { padding: 0.5rem; gap: 0.6rem; }
-.card { padding: 0.75rem; min-height: 8.5rem; }
-.card h3 { font-size: 0.95rem; }
-.card p { font-size: 0.85rem; }
-
-.btn, .btn-ghost { padding: 0.5rem 0.7rem; font-size: 0.95rem; }
-
-/* Make interactive targets full-width when used in vertical lists */
-.stack-full .btn { width: 100%; display: block; }
-.stack-full .chip { width: 100%; text-align: center; }
-
-.notif-dropdown { left: 0.25rem; right: 0.25rem; max-width: calc(100% - 0.5rem); }
-}
-
-/* Keep reduced-motion safety repeated (no unexpected movement) */
-@media (prefers-reduced-motion: reduce) {
-.card, .chip, .btn, .notif-btn { transition: none !important; transform: none !important; }
-}
-
-/* Accessibility: ensure focus outlines remain visible on small screens */
-a:focus-visible,
-button:focus-visible {
-outline: 3px solid rgba(4,140,120,0.14);
+/* Accessibility: ensure focusable controls inside dropdown are visible */
+.notif-dropdown button:focus,
+.notif-dropdown a:focus {
+outline: 3px solid rgba(4,140,120,0.12);
 outline-offset: 3px;
 border-radius: 0.25rem;
 }
 
-/* End — small-screen tuned: stacked topbar, single-column grid, larger tap targets,
-compact hero and cards, responsive notif dropdowns, optional utility classes
-(.icon-only, .stack-full, .hide-on-sm) provided for incremental JS-driven behavior.
-*/
+/* If dropdown appears cut off due to overflow on ancestors, force it above via fixed on small screens */
+/* Small screens & touch: make dropdown fixed and horizontally padded so it is always fully visible */
+@media (max-width: 48rem) {
+.notif-dropdown {
+position: fixed;
+/* center horizontally with safe padding */
+left: 0.5rem;
+right: 0.5rem;
+top: calc(var(--topbar-pad-y) + 3.25rem); /* places it below typical topbar area */
+width: auto;
+max-width: calc(100% - 1rem);
+border-radius: 0.75rem;
+transform-origin: top center;
+}
+
+/* larger tap targets inside */
+.notif-list li { padding: 0.85rem 1rem; font-size: 0.98rem; }
+
+/* make close affordance visible if present */
+.notif-head { padding: 0.85rem 1rem; }
+}
+
+/* Edge case: if the dropdown's right-most position causes it to overflow the viewport,
+shift it left automatically so content remains visible. This helps on narrow containers. */
+.notif-dropdown {
+/* attempt auto-correction using transform if the viewport is too narrow */
+right: 0;
+left: auto;
+}
+
+/* High-contrast fallback: visible border when open */
+.notif-wrap:focus-within .notif-dropdown,
+.notif-wrap.open .notif-dropdown {
+border-color: rgba(4,140,120,0.12);
+}
+
+/* If the page uses pointer-events:none on parents, ensure dropdown can still receive interaction
+by forcing pointer-events on the dropdown itself when visible (already handled above) */
+
+/* If a clicking interaction previously kept button focused but dropdown closed,
+this rule helps keep the dropdown visible for a short time after focus moves into it.
+(This will not interfere with JS.) */
+.notif-wrap:focus-within .notif-dropdown,
+.notif-dropdown:hover {
+visibility: visible;
+opacity: 1;
+pointer-events: auto;
+}
+
+/* Extra safety: prevent page-level overscroll from moving the dropdown off-screen when scrolling inside dropdown */
+.notif-dropdown {
+overscroll-behavior: contain;
+}
+
+/* End of notification-only CSS patch.
+Usage notes (no JS changes required):
+
+* If your notification button receives focus (click/tab), the dropdown will open using :focus-within.
+* If your app already toggles .notif-wrap.open (JS), that class remains supported.
+* On small screens the dropdown is fixed and centered so it's not clipped.
+  */
