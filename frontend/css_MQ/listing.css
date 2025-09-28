@@ -1,0 +1,481 @@
+:root {
+--indigo-shade: #00796B;
+--indigo-base: #009688;
+--indigo-tint: #4DB6AC;
+--grey-base: #6C757D;
+--grey-shade: #343A40;
+--grey-tint: #E9ECEF;
+
+--font-heading: "Roslindale SemiBold", serif;
+--font-body: "Helvetica Neue", sans-serif;
+
+/* layout tokens (rem) */
+--page-max: 68.75rem;        /* 1100px */
+--page-pad: 0.875rem;        /* 14px */
+--gap-sm: 0.5rem;            /* 8px */
+--gap-md: 0.75rem;           /* 12px */
+--gap-lg: 1rem;              /* 16px */
+--radius: 0.5rem;            /* 8px */
+--shadow-soft: 0 0.375rem 1rem rgba(20,30,60,0.06);
+--shadow-deep: 0 0.75rem 1.75rem rgba(20,30,60,0.08);
+--transition-fast: 160ms;
+--transition-med: 260ms;
+--muted: rgba(52,58,64,0.65);
+--notif-z: 1400;
+}
+
+/* Universal reset (exact pattern) */
+*,
+*::before,
+*::after {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+
+* { transition: none !important; animation: none !important; }
+  }
+
+/* Base */
+html { font-size: 100%; } /* 1rem = 16px */
+html, body { height: 100%; }
+
+body {
+font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+background: #f4f6f8;
+color: var(--grey-shade);
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+line-height: 1.45;
+-webkit-text-size-adjust: 100%;
+}
+
+/* Page wrapper */
+.page {
+max-width: var(--page-max);
+margin: 1.125rem auto; /* 18px */
+padding: var(--page-pad);
+}
+
+/* Topbar */
+.topbar {
+display: flex;
+flex-wrap: wrap;
+gap: var(--gap-md);
+align-items: center;
+justify-content: space-between;
+margin-bottom: 0.75rem;
+}
+
+.topbar h1 {
+font-family: var(--font-heading);
+font-size: 1.125rem; /* 18px */
+color: var(--indigo-shade);
+margin: 0;
+line-height: 1;
+}
+
+/* Controls (search/filter/refresh) */
+.controls {
+display: flex;
+gap: var(--gap-sm);
+align-items: center;
+flex-wrap: wrap;
+}
+
+.controls input,
+.controls select {
+padding: 0.5rem 0.625rem; /* 8px 10px */
+border-radius: 0.5rem;
+border: 0.0625rem solid rgba(16,24,32,0.06);
+background: #fff;
+font-size: 0.9375rem;
+color: var(--grey-shade);
+transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+min-width: 10rem;
+}
+
+/* Focus state for controls */
+.controls input:focus,
+.controls select:focus {
+outline: none;
+border-color: var(--indigo-base);
+box-shadow: 0 0 0.5rem rgba(77,182,172,0.10);
+}
+
+/* Action button inside controls */
+.controls button {
+padding: 0.5rem 0.75rem;
+border-radius: 0.5rem;
+border: none;
+background: linear-gradient(180deg, var(--indigo-base), var(--indigo-shade));
+color: #fff;
+cursor: pointer;
+font-weight: 700;
+font-size: 0.9375rem;
+box-shadow: 0 0.25rem 0.6rem rgba(16,24,32,0.06);
+transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast), background var(--transition-fast);
+display: inline-flex;
+align-items: center;
+justify-content: center;
+}
+
+/* Button hover/focus effects (accessible + subtle) */
+.controls button:hover,
+.controls button:focus {
+transform: translateY(-0.06rem);
+box-shadow: var(--shadow-deep);
+opacity: 0.98;
+outline: none;
+background: linear-gradient(180deg, var(--indigo-shade), var(--indigo-base));
+}
+
+/* Grid of listings */
+.grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); /* 240px min */
+gap: var(--gap-md);
+margin-top: 0.75rem;
+}
+
+/* Listing card */
+.listing-card {
+background: #fff;
+border-radius: var(--radius);
+padding: 0.75rem;
+box-shadow: var(--shadow-soft);
+display: flex;
+flex-direction: column;
+gap: 0.5rem;
+min-height: 7.5rem; /* 120px */
+transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+border: 0.0625rem solid rgba(16,24,32,0.04);
+text-decoration: none;
+color: inherit;
+}
+
+/* Hover/focus for listing cards */
+.listing-card:hover,
+.listing-card:focus-within {
+transform: translateY(-0.1875rem); /* -3px */
+box-shadow: var(--shadow-deep);
+}
+
+/* Reserved highlight */
+.listing-card.reserved {
+border-color: rgba(255,152,0,0.28);
+background: #fff8e6;
+box-shadow: 0 0.5rem 1.25rem rgba(255,152,0,0.06);
+}
+
+/* Card content */
+.listing-card h4 {
+margin: 0;
+font-family: var(--font-heading);
+font-size: 1rem;
+color: var(--indigo-shade);
+line-height: 1.1;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+
+.listing-card .meta {
+font-size: 0.8125rem; /* 13px */
+color: var(--muted);
+margin-top: 0.125rem;
+flex: 1 1 auto;
+}
+
+/* Price / badges area */
+.listing-card .price {
+font-weight: 800;
+font-size: 0.9375rem;
+color: var(--indigo-base);
+}
+
+.listing-card .status {
+display: inline-block;
+padding: 0.125rem 0.5rem;
+border-radius: 999px;
+font-size: 0.75rem;
+font-weight: 700;
+background: rgba(0,0,0,0.03);
+color: var(--grey-shade);
+}
+
+/* Thumbs / images */
+.card .thumb,
+.listing-card .thumb {
+width: 5.75rem;  /* 92px */
+height: 8rem;    /* 128px */
+border-radius: 0.375rem;
+overflow: hidden;
+background: #f0f2f4;
+flex-shrink: 0;
+}
+.card .thumb img,
+.listing-card img {
+width: 100%;
+height: 100%;
+object-fit: cover;
+display: block;
+border-radius: 0.25rem;
+}
+
+/* Legacy .card layout */
+.card {
+display: flex;
+gap: 0.75rem;
+align-items: flex-start;
+background: #fff;
+border-radius: var(--radius);
+padding: 0.75rem;
+box-shadow: var(--shadow-soft);
+border: 0.0625rem solid rgba(16,24,32,0.04);
+}
+.card .body { flex: 1; }
+.card h3 {
+margin: 0 0 0.25rem 0;
+font-family: var(--font-heading);
+font-size: 1rem;
+color: var(--indigo-shade);
+}
+.card .meta {
+margin: 0;
+font-size: 0.8125rem;
+color: var(--muted);
+}
+
+/* Action rows */
+.card .actions,
+.listing-card .actions {
+display: flex;
+gap: 0.5rem;
+align-items: center;
+margin-top: 0.5rem;
+}
+
+/* Buttons base */
+.btn {
+padding: 0.5rem 0.625rem;
+border-radius: 0.5rem;
+border: none;
+cursor: pointer;
+font-size: 0.875rem;
+transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast), background var(--transition-fast);
+display: inline-flex;
+align-items: center;
+justify-content: center;
+}
+
+/* Primary & ghost */
+.btn.primary {
+background: linear-gradient(180deg, var(--indigo-base), var(--indigo-shade));
+color: #fff;
+font-weight: 700;
+}
+.btn.ghost {
+background: #f3f6f7;
+color: var(--grey-shade);
+border: 0.0625rem solid rgba(16,24,32,0.04);
+}
+
+/* Hover/focus effects for all buttons (consistent) */
+.btn:hover,
+.btn:focus,
+.btn.primary:hover,
+.btn.primary:focus,
+.btn.ghost:hover,
+.btn.ghost:focus,
+.controls button:hover,
+.controls button:focus {
+transform: translateY(-0.06rem);
+box-shadow: var(--shadow-deep);
+opacity: 0.98;
+outline: none;
+}
+
+/* Small utility classes */
+.small { font-size: 0.8125rem; padding: 0.375rem 0.5rem; }
+.countdown { font-size: 0.8125rem; color: #b33; font-weight: 700; }
+.contact { font-size: 0.8125rem; color: #155724; background: #e6f4ea; padding: 0.375rem 0.5rem; border-radius: 0.375rem; display: inline-block; }
+
+/* Pager */
+.pager {
+display: flex;
+justify-content: center;
+gap: 0.75rem;
+margin-top: 1rem;
+align-items: center;
+}
+.pager button {
+padding: 0.5rem 0.75rem;
+border-radius: 0.5rem;
+border: none;
+background: #fff;
+box-shadow: var(--shadow-soft);
+cursor: pointer;
+font-weight: 700;
+}
+
+/* Disabled */
+button[disabled],
+.btn[disabled] {
+opacity: 0.5;
+cursor: not-allowed;
+transform: none;
+}
+
+/* Accessibility */
+a { color: inherit; text-decoration: none; }
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+outline: 3px solid rgba(4,140,120,0.14);
+outline-offset: 3px;
+border-radius: 0.25rem;
+}
+
+/* Empty / loading states */
+.grid.empty,
+#listingsGrid:empty {
+text-align: center;
+color: var(--muted);
+padding: 1rem;
+}
+
+/* Notification dropdown (CSS-only visibility support) */
+.notif-wrap { position: relative; }
+.notif-dropdown {
+position: absolute;
+right: 0;
+top: calc(100% + 0.5rem);
+width: min(20rem, 92vw);
+background: #fff;
+color: var(--grey-shade);
+border-radius: 0.5rem;
+box-shadow: var(--shadow-soft);
+border: 0.0625rem solid rgba(16,24,32,0.04);
+overflow: hidden;
+z-index: var(--notif-z);
+opacity: 0;
+visibility: hidden;
+transform: translateY(-0.5rem) scale(0.995);
+pointer-events: none;
+transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+}
+
+/* show dropdown when focused or via ARIA / class toggles */
+.notif-dropdown[aria-hidden="false"],
+.notif-dropdown:not(.hidden),
+.notif-wrap:focus-within .notif-dropdown,
+.notif-wrap.open .notif-dropdown,
+.notif-wrap.is-open .notif-dropdown {
+display: block;
+opacity: 1;
+visibility: visible;
+transform: translateY(0) scale(1);
+pointer-events: auto;
+}
+
+/* Responsive tweaks (keeps layout neat on small screens) */
+
+/* 1) Small → Medium screens: 25rem — 48rem (400px — 768px) */
+@media (min-width: 25rem) and (max-width: 48rem) {
+:root {
+--page-pad: 0.75rem;
+--page-max: 34rem;
+}
+
+.page { padding: 0.5rem; margin: 0.5rem auto; max-width: var(--page-max); }
+
+.topbar { gap: 0.5rem; }
+.topbar h1 { font-size: 1rem; }
+
+.controls input,
+.controls select { min-width: 0; width: 100%; max-width: none; }
+
+.controls { width: 100%; gap: 0.5rem; }
+
+.controls button { width: auto; flex: 0 0 auto; }
+
+.grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+.listing-card { padding: 0.65rem; min-height: 7rem; }
+
+.card .thumb,
+.listing-card .thumb { width: 4.75rem; height: 6.75rem; }
+
+.listing-card h4 { font-size: 0.9375rem; }
+
+/* Make controls stack when space is tight */
+@supports (width: min(100%, 30rem)) {
+.controls input { min-width: 8rem; }
+}
+
+/* Notifications become fixed and centered to avoid clipping */
+.notif-dropdown {
+position: fixed;
+left: 0.5rem;
+right: 0.5rem;
+top: calc(0.5rem + 3rem);
+max-width: calc(100% - 1rem);
+border-radius: 0.75rem;
+}
+}
+
+/* 2) Mid / Desktop: 48.0625rem — 80rem (769px — 1280px) */
+@media (min-width: 48.0625rem) and (max-width: 80rem) {
+:root {
+--page-pad: 0.875rem;
+--page-max: 50rem;
+}
+
+.page { padding: var(--page-pad); max-width: var(--page-max); }
+
+.topbar h1 { font-size: 1.125rem; }
+
+.grid { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--gap-md); }
+
+.listing-card { padding: 0.75rem; min-height: 7.5rem; }
+.card .thumb,
+.listing-card .thumb { width: 5.75rem; height: 8rem; }
+
+.notif-dropdown { position: absolute; right: 0; top: calc(100% + 0.5rem); width: min(20rem, 92vw); }
+}
+
+/* 3) Wide desktop: 80.0625rem — 95.9375rem (1281px — 1535px) */
+@media (min-width: 80.0625rem) and (max-width: 95.9375rem) {
+:root {
+--page-pad: 1rem;
+--page-max: 80rem;
+}
+
+.page { padding: var(--page-pad); max-width: var(--page-max); }
+
+.grid { gap: var(--gap-lg); grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+
+.listing-card { padding: 0.9rem; min-height: 8rem; }
+.notif-dropdown { width: min(22rem, 86vw); }
+}
+
+/* Extra-small fallback (<25rem) */
+@media (max-width: 25rem) {
+:root { --page-pad: 0.5rem; }
+.page { padding: var(--page-pad); margin: 0.4rem auto; }
+.grid { grid-template-columns: 1fr; gap: 0.5rem; }
+.listing-card { padding: 0.5rem; min-height: 6.5rem; }
+.card .thumb, .listing-card .thumb { width: 4.25rem; height: 6rem; }
+.topbar h1 { font-size: 0.95rem; }
+.notif-dropdown { position: fixed; left: 0.25rem; right: 0.25rem; top: 3rem; max-width: calc(100% - 0.5rem); border-radius: 0.75rem; }
+}
+
+/* Utility */
+.hidden { display: none !important; }
