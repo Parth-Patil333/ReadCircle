@@ -1,4 +1,4 @@
-:root {
+:root{
 --indigo-shade: #00796B;
 --indigo-base: #009688;
 --indigo-tint: #4DB6AC;
@@ -10,14 +10,19 @@
 --font-body: "Helvetica Neue", sans-serif;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  }
+/* Universal reset (keeps your required pattern) */
+*,
+*::before,
+*::after {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
 
 /* ===== Design tokens / spacing (use rem units) ===== */
-:root {
+:root{
 --page-pad: 2rem;
 --topbar-pad-y: 1rem;
 --topbar-pad-x: 1.25rem;
@@ -33,8 +38,8 @@
 --transition-med: 260ms;
 
 /* button tokens */
---btn-pad-y: 0.4rem;
---btn-pad-x: 0.875rem;
+--btn-pad-y: 0.45rem;
+--btn-pad-x: 1rem;
 --btn-font: 0.9375rem;
 --btn-radius: var(--radius-md);
 }
@@ -53,8 +58,6 @@ font-family: var(--font-body);
 color: var(--grey-shade);
 background: #ffffff;
 line-height: 1.6;
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
 padding: var(--page-pad);
 display: flex;
 flex-direction: column;
@@ -82,7 +85,7 @@ box-shadow: var(--shadow-2);
 position: sticky;
 top: 0;
 z-index: 1000;
-border-bottom: 0.0625rem solid rgba(0,0,0,0.06); /* 1px */
+border-bottom: 0.0625rem solid rgba(0,0,0,0.06);
 }
 
 /* Brand */
@@ -138,7 +141,7 @@ outline: none;
 }
 .btn:active { transform: translateY(0); }
 
-/* Ghost variant (topbar) */
+/* Ghost variant */
 .btn-ghost {
 background: transparent;
 color: #fff;
@@ -153,11 +156,7 @@ border-color: rgba(255,255,255,0.9);
 }
 
 /* ===== Notifications UI ===== */
-.notif-wrap {
-position: relative;
-display: inline-flex;
-align-items: center;
-}
+.notif-wrap { position: relative; display: inline-flex; align-items: center; }
 
 .notif-btn {
 background: transparent;
@@ -201,7 +200,7 @@ top: calc(100% + 0.5rem);
 width: min(24rem, 90vw);
 background: #fff;
 color: var(--grey-shade);
-border-radius: var(--radius-md);
+border-radius: 0.5rem;
 box-shadow: var(--shadow-2);
 border: 0.0625rem solid rgba(16,24,32,0.06);
 overflow: hidden;
@@ -218,7 +217,6 @@ padding: 0.75rem 1rem;
 border-bottom: 0.0625rem solid rgba(16,24,32,0.04);
 background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
 }
-
 .notif-actions { display: flex; gap: 0.5rem; align-items: center; }
 
 .notif-list {
@@ -228,7 +226,6 @@ overflow: auto;
 padding: 0.5rem;
 margin: 0;
 }
-
 .notif-list li {
 padding: 0.6rem 0.8rem;
 border-radius: 0.375rem;
@@ -348,8 +345,6 @@ border-color: var(--indigo-base);
 box-shadow: 0 1rem 2rem rgba(0,0,0,0.09);
 transform: translateY(-0.3125rem) scale(1.01);
 }
-
-/* CTA subtle arrow spacing */
 .card .cta::after { content: " →"; }
 
 /* ===== Footer ===== */
@@ -388,7 +383,6 @@ outline-offset: 3px;
 border-radius: 0.25rem;
 }
 
-/* Small utilities */
 .small { font-size: 0.85rem; color: var(--grey-base); }
 .hidden { display: none !important; }
 
@@ -398,36 +392,54 @@ REQUIRED MEDIA QUERY RANGES (REM units)
 1. 400px — 768px  => 25rem — 48rem
 2. 769px — 1280px => 48.0625rem — 80rem
 3. 1281px — 1535px => 80.0625rem — 95.9375rem
-   Minimal, non-breaking tweaks only — keep design intact.
+   Adjusted small-screen sizing so things are comfortably larger.
    ============================ */
 
 /* 1) Small → Medium screens: 25rem — 48rem */
 @media (min-width: 25rem) and (max-width: 48rem) {
 :root {
---page-pad: 1.5rem;
---topbar-pad-y: 0.875rem;
+--page-pad: 1.75rem;         /* slightly reduced but still roomy */
+--topbar-pad-y: 0.9rem;
 --topbar-pad-x: 1rem;
---gap-md: 0.75rem;
+--gap-md: 0.9rem;
+--card-min-h: 12.5rem;      /* taller cards for touch */
+--btn-pad-y: 0.65rem;       /* larger touch area */
+--btn-font: 1.05rem;        /* bigger button text */
 }
 
-.wrap { padding: 0 1rem; max-width: 48rem; }
+body { padding: var(--page-pad); }
+
+.wrap { padding: 0 1rem; max-width: 44rem; }
+
+/* Topbar adjustments for legibility */
 .topbar { padding: var(--topbar-pad-y) var(--topbar-pad-x); }
-.brand { font-size: 1rem; gap: 0.5rem; }
-.logo-dot { width: 0.75rem; height: 0.75rem; }
+.brand { font-size: 1.125rem; gap: 0.6rem; }
+.logo-dot { width: 0.9rem; height: 0.9rem; }
 
-.hero { padding: 1.5rem; margin: 1rem auto; border-radius: 0.75rem; }
-.hero .greet { font-size: 1.375rem; }
+/* Make buttons larger and easier to tap */
+.btn { padding: var(--btn-pad-y) 1.1rem; font-size: var(--btn-font); border-radius: 0.6rem; }
 
-.grid { gap: 1rem; padding: 1rem; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); }
+/* Hero: increase sizes so text doesn't feel tiny on small screens */
+.hero { padding: 1.75rem; margin: 1rem auto; border-radius: 0.75rem; }
+.hero .greet { font-size: 1.5rem; }   /* up from 1.375/1.625 */
+.hero .sub { font-size: 1.05rem; }
 
-.btn { padding: 0.35rem 0.75rem; font-size: 0. nine37rem; } /* keep small touch targets */
-.chip { padding: 0.4rem 0.875rem; font-size: 0. ninerem; }
+/* Chips and quick actions — enlarge for touch */
+.chip { padding: 0.5rem 1.05rem; font-size: 1rem; }
 
-.notif-dropdown { width: min(20rem, 92vw); }
-.notif-list { max-height: 12rem; }
+/* Grid cards: increase min width and height so content breathes */
+.grid { gap: 1rem; padding: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.card { padding: 1.15rem; min-height: var(--card-min-h); }
+.card h3 { font-size: 1.125rem; }
+.card p { font-size: 1rem; }
 
-.card { padding: 1rem; min-height: 10rem; }
-.card h3 { font-size: 1rem; }
+/* Notifications: make dropdown and text slightly larger */
+.notif-dropdown { width: min(22rem, 94vw); }
+.notif-list li { padding: 0.75rem 0.9rem; }
+.notif-badge { min-width: 1.4rem; height: 1.4rem; font-size: 0.8rem; }
+
+/* Footer spacing */
+.foot { padding: 1rem 0; font-size: 0.95rem; }
 }
 
 /* 2) Mid / Desktop: 48.0625rem — 80rem */
@@ -437,19 +449,18 @@ REQUIRED MEDIA QUERY RANGES (REM units)
 --topbar-pad-y: 1rem;
 --topbar-pad-x: 1.25rem;
 --gap-md: 1rem;
+--card-min-h: 11.25rem;
+--btn-pad-y: 0.45rem;
+--btn-font: 0.9375rem;
 }
 
 .wrap { max-width: 72rem; padding: 0 2rem; }
 .hero { padding: 2rem; margin: 1.5rem auto; }
-.hero .greet { font-size: 1.5rem; }
-
+.hero .greet { font-size: 1.625rem; }
 .grid { grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1.25rem; padding: 1.25rem; }
-
-.btn { padding: 0.4rem 0.875rem; font-size: 0.9375rem; }
+.btn { padding: var(--btn-pad-y) var(--btn-pad-x); font-size: var(--btn-font); }
 .chip { padding: 0.45rem 1rem; font-size: 0.95rem; }
-
 .notif-dropdown { width: min(22rem, 86vw); }
-.notif-list { max-height: 14rem; }
 }
 
 /* 3) Wide desktop: 80.0625rem — 95.9375rem */
@@ -459,22 +470,45 @@ REQUIRED MEDIA QUERY RANGES (REM units)
 --topbar-pad-y: 1.125rem;
 --topbar-pad-x: 1.5rem;
 --gap-md: 1.25rem;
+--btn-font: 1rem;
 }
 
 .wrap { max-width: 76rem; padding: 0 2.5rem; }
 .hero { padding: 2.25rem; margin: 2rem auto; border-radius: 1rem; }
 .hero .greet { font-size: 1.75rem; }
-
 .grid { gap: 1.5rem; padding: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
-
-.btn { padding: 0.45rem 1rem; font-size: 1rem; }
+.btn { padding: var(--btn-pad-y) 1.05rem; font-size: var(--btn-font); }
 .chip { padding: 0.5rem 1.1rem; font-size: 1rem; }
-
 .notif-dropdown { width: min(24rem, 80vw); }
 .notif-list { max-height: 16rem; }
 }
 
-/* Reduced-motion safety (ensure animation-free where applicable) */
+/* Very small screens fallback (width < 25rem) — ensure readable tap targets */
+@media (max-width: 25rem) {
+:root {
+--page-pad: 1rem;
+--btn-pad-y: 0.7rem;
+--btn-font: 1.05rem;
+--card-min-h: 13rem;
+}
+
+body { padding: var(--page-pad); }
+.wrap { padding: 0 0.75rem; }
+.topbar { padding: 0.6rem 0.6rem; }
+.brand { font-size: 1rem; }
+.hero { padding: 1.25rem; margin: 0.75rem auto; }
+.hero .greet { font-size: 1.4rem; }
+.hero .sub { font-size: 1.05rem; }
+.btn { padding: var(--btn-pad-y) 1rem; font-size: var(--btn-font); border-radius: 0.6rem; }
+.chip { padding: 0.55rem 1rem; font-size: 1rem; }
+.grid { grid-template-columns: 1fr; padding: 0.75rem; gap: 0.9rem; }
+.card { padding: 1.25rem; min-height: var(--card-min-h); }
+.card h3 { font-size: 1.125rem; }
+.card p { font-size: 1rem; }
+.foot { font-size: 0.95rem; }
+}
+
+/* Reduced-motion safety */
 @media (prefers-reduced-motion: reduce) {
 .card,
 .chip,
