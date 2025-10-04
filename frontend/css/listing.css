@@ -5,7 +5,6 @@
 --grey-base: #6C757D;
 --grey-shade: #343A40;
 --grey-tint: #E9ECEF;
-
 --font-heading: "Roslindale SemiBold", serif;
 --font-body: "Helvetica Neue", sans-serif;
 }
@@ -14,7 +13,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  }
+}
 
 /* Design tokens (rem-based) */
 :root {
@@ -159,17 +158,20 @@ background: #fff8e6;
 box-shadow: 0 0.5rem 1.25rem rgba(255,152,0,0.06);
 }
 
-/* Card content */
 .listing-card h4 {
-margin: 0;
-font-family: var(--font-heading);
-font-size: 1rem;
-color: var(--indigo-shade);
-line-height: 1.1;
-overflow: hidden;
-text-overflow: ellipsis;
-white-space: nowrap;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--indigo-shade);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;   /* ✅ allow wrapping */
+  display: -webkit-box;  /* ✅ multi-line truncation support */
+  -webkit-line-clamp: 2; /* ✅ max 2 lines */
+  -webkit-box-orient: vertical;
 }
+
 
 .listing-card .meta {
 font-size: 0.8125rem; /* 13px */
